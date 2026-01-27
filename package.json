@@ -1,0 +1,26 @@
+{
+  "name": "coderats",
+  "version": "1.0.0",
+  "description": "Created by Rasmus Makiniemi, curated by the Tech Team",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hcp-uw/codeRats.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/hcp-uw/codeRats/issues"
+  },
+  "homepage": "https://github.com/hcp-uw/codeRats#readme",
+  "dependencies": {
+    "@rneui/themed": "^5.0.0",
+    "@supabase/supabase-js": "^2.91.1",
+    "expo": "^54.0.32",
+    "expo-sqlite": "~16.0.10"
+  }
+}
