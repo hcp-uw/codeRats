@@ -7,11 +7,12 @@ import {
   ScrollView,
   LogInScreen,
   SignUpScreen,
+  SafeAreaView,
 } from 'react-native';
 
 export default function WelcomeScreen({ navigation }) {
   return (
-    <react-native-safe-area-context style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Logo/Header Section */}
         <View style={styles.headerSection}>
@@ -58,7 +59,7 @@ export default function WelcomeScreen({ navigation }) {
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </react-native-safe-area-context>
+    </SafeAreaView>
   );
 }
 
