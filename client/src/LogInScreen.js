@@ -26,7 +26,7 @@ export default function LogInScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <react-native-safe-area-context style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation?.goBack()}>
@@ -119,7 +119,7 @@ export default function LogInScreen({ navigation }) {
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </react-native-safe-area-context>
   );
 }
 
