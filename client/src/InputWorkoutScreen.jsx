@@ -8,8 +8,9 @@ import {
   ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import {useNavigation} from '@react-navigation/native';
 
-export default function AddWorkoutScreen() {
+export default function WorkoutScreen({ navigation }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [activity, setActivity] = useState("");
@@ -29,6 +30,7 @@ export default function AddWorkoutScreen() {
       distance,
     };
 
+    //to be changed with supabase connection, navigation, validation
     console.log("Workout saved:", workout);
   };
 
@@ -36,7 +38,7 @@ export default function AddWorkoutScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color="#3E5A3C" />
         </TouchableOpacity>
       </View>
@@ -46,7 +48,7 @@ export default function AddWorkoutScreen() {
         <TextInput
           style={styles.input}
           placeholder="Title your workout"
-          placeholderTextColor="#7A7A7A"
+          placeholderTextColor="#5F6A5F"
           value={title}
           onChangeText={setTitle}
         />
@@ -55,7 +57,7 @@ export default function AddWorkoutScreen() {
         <TextInput
           style={[styles.input, styles.textArea]}
           placeholder="Description"
-          placeholderTextColor="#7A7A7A"
+          placeholderTextColor="#5F6A5F"
           multiline
           value={description}
           onChangeText={setDescription}
@@ -64,10 +66,10 @@ export default function AddWorkoutScreen() {
         {/* Activity */}
         <TouchableOpacity style={styles.dropdown}>
           <View style={styles.dropdownLeft}>
-            <Ionicons name="walk-outline" size={20} color="#3E5A3C" />
+            <Ionicons name="walk-outline" size={20} color="#5F6A5F" />
             <Text style={styles.dropdownText}>{activity}</Text>
           </View>
-          <Ionicons name="chevron-down" size={20} color="#3E5A3C" />
+          <Ionicons name="chevron-down" size={20} color="#5F6A5F" />
         </TouchableOpacity>
 
         <Text style={styles.sectionTitle}>Activity Stats</Text>
@@ -75,43 +77,43 @@ export default function AddWorkoutScreen() {
         {/* Date */}
         <TouchableOpacity style={styles.dropdown}>
           <View style={styles.dropdownLeft}>
-            <Ionicons name="calendar-outline" size={20} color="#3E5A3C" />
+            <Ionicons name="calendar-outline" size={20} color="#5F6A5F" />
             <Text style={styles.dropdownText}>{date}</Text>
           </View>
-          <Ionicons name="chevron-down" size={20} color="#3E5A3C" />
+          <Ionicons name="chevron-down" size={20} color="#5F6A5F" />
         </TouchableOpacity>
 
         {/* Time */}
         <TouchableOpacity style={styles.dropdown}>
           <View style={styles.dropdownLeft}>
-            <Ionicons name="time-outline" size={20} color="#3E5A3C" />
+            <Ionicons name="time-outline" size={20} color="#5F6A5F" />
             <Text style={styles.dropdownText}>
               {time || "Time"}
             </Text>
           </View>
-          <Ionicons name="chevron-down" size={20} color="#3E5A3C" />
+          <Ionicons name="chevron-down" size={20} color="#5F6A5F" />
         </TouchableOpacity>
 
         {/* Duration */}
         <TouchableOpacity style={styles.dropdown}>
           <View style={styles.dropdownLeft}>
-            <Ionicons name="stopwatch-outline" size={20} color="#3E5A3C" />
+            <Ionicons name="stopwatch-outline" size={20} color="#5F6A5F" />
             <Text style={styles.dropdownText}>
               {duration || "Duration"}
             </Text>
           </View>
-          <Ionicons name="chevron-down" size={20} color="#3E5A3C" />
+          <Ionicons name="chevron-down" size={20} color="#5F6A5F" />
         </TouchableOpacity>
 
         {/* Distance */}
         <TouchableOpacity style={styles.dropdown}>
           <View style={styles.dropdownLeft}>
-            <Ionicons name="analytics-outline" size={20} color="#3E5A3C" />
+            <Ionicons name="analytics-outline" size={20} color="#5F6A5F" />
             <Text style={styles.dropdownText}>
               {distance || "Distance"}
             </Text>
           </View>
-          <Ionicons name="chevron-down" size={20} color="#3E5A3C" />
+          <Ionicons name="chevron-down" size={20} color="#5F6A5F" />
         </TouchableOpacity>
       </ScrollView>
 
@@ -126,11 +128,11 @@ export default function AddWorkoutScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#3E5A3C",
+    backgroundColor: "#3D5A3C",
   },
 
   header: {
-    backgroundColor: "#D8AC7C",
+    backgroundColor: "#D4A574",
     paddingTop: 60,
     paddingHorizontal: 20,
     paddingBottom: 20,
@@ -141,7 +143,7 @@ const styles = StyleSheet.create({
   },
 
   input: {
-    backgroundColor: "#F6F2EA",
+    backgroundColor: "#F5F0E8",
     borderRadius: 12,
     padding: 14,
     fontSize: 16,
@@ -154,7 +156,7 @@ const styles = StyleSheet.create({
   },
 
   dropdown: {
-    backgroundColor: "#F6F2EA",
+    backgroundColor: "#F5F0E8",
     borderRadius: 12,
     padding: 14,
     marginBottom: 12,
@@ -171,18 +173,18 @@ const styles = StyleSheet.create({
 
   dropdownText: {
     fontSize: 16,
-    color: "#3E5A3C",
+    color: "#5F6A5F",
   },
 
   sectionTitle: {
-    color: "#D8AC7C",
+    color: "#D4A574",
     fontSize: 16,
     fontWeight: "600",
     marginVertical: 10,
   },
 
   saveButton: {
-    backgroundColor: "#D8AC7C",
+    backgroundColor: "#D4A574",
     padding: 18,
     borderRadius: 14,
     margin: 20,
