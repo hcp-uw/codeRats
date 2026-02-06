@@ -1,3 +1,5 @@
+import { supabase } from './lib/supabase'
+
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View } from 'react-native';
 import WelcomeScreen from './src/WelcomeScreen';
@@ -9,6 +11,15 @@ import { createStackNavigator } from '@react-navigation/stack';
 const Stack = createStackNavigator();
 
 export default function App() {
+  const [instruments, setInstruments] = useState([])
+  useEffect(() => {
+    getInstruments()
+  }, [])
+  async function getInstruments() {
+    const { data } = await supabase.from('instruments').select()
+    setInstruments(data)
+  }
+
   return (
     <NavigationContainer>
       <Stack.Navigator
