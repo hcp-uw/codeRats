@@ -31,12 +31,14 @@ cd client
 
 ```
 npm install
+
 ```
 
 3. **Start the development server:**
 
 ```
 npm start
+
 ```
 
 4. **Open up the Expo Go app on your phone:**
