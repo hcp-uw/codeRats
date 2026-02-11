@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import WelcomeScreen from './src/WelcomeScreen';
 import LogInScreen from './src/LogInScreen';
 import SignUpScreen from './src/SignUpScreen';
+import GoalsScreen from './src/GoalsScreen';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import WorkoutScreen from './src/InputWorkoutScreen'; 
@@ -20,6 +21,7 @@ export default function App() {
         <Stack.Screen name="LogInScreen" component={LogInScreen} />
         <Stack.Screen name="SignUpScreen" component={SignUpScreen} />
         <Stack.Screen name="WorkoutScreen" component={WorkoutScreen} />
+        <Stack.Screen name="GoalsScreen" component={GoalsScreen} />
       </Stack.Navigator>
       <StatusBar style="auto" />
     </NavigationContainer>
