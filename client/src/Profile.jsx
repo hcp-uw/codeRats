@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, View, Text, SafeAreaView, ScrollView, TouchableOpacity } from 'react-native';
 import { ChevronLeft, Home, Calendar, Edit3, BarChart2, ShoppingCart, Award, Flame, Target, TrendingUp } from 'lucide-react-native';
+import { useState } from 'react';
 
 const Profile = () => {
   const dailyTasks = [
@@ -8,6 +9,13 @@ const Profile = () => {
     { id: 2, title: '30 burpees', reward: 40, completed: false },
     { id: 3, title: 'Stretch 15min', reward: 25, completed: false },
   ];
+  const [tasks, setTasks] = useState(dailyTasks);
+
+  const toggleTask = (id) => {
+    setTasks(tasks.map(task =>
+      task.id === id ? { ...task, completed: !task.completed } : task
+    ));
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -21,7 +29,7 @@ const Profile = () => {
           </TouchableOpacity>
           <View style={styles.currencyContainer}>
             <Award color="white" size={20} />
-            <Text style={styles.currencyText}>15,847</Text>
+            <Text style={styles.currencyText}>15,847</Text> // TODO: backend Import user coins
           </View>
         </View>
 
@@ -33,66 +41,70 @@ const Profile = () => {
               <Text style={styles.levelText}>Lvl 12</Text>
             </View>
           </View>
-          <Text style={styles.userName}>Profile name</Text>
-          <Text style={styles.userTitle}>Fitness Warrior</Text>
+          <Text style={styles.userName}>User's name</Text> // TODO: backend import user's name e.g. Megan
+          <Text style={styles.userTitle}>Fitness Warrior</Text> // TODO: backend username e.g. IhateRunning
         </View>
 
         {/* Stats Row */}
         <View style={styles.statsRow}>
-          <StatBox icon={<TrendingUp color="white" size={18}/>} label="Day Streak" value="127" />
+          <StatBox icon={<TrendingUp color="white" size={18}/>} label="Day Streak" value="127" /> // TODO: backend Import user Day streak
           <View style={styles.divider} />
-          <StatBox icon={<Target color="white" size={18}/>} label="Goal Rate" value="89%" />
+          <StatBox icon={<Target color="white" size={18}/>} label="Goal Rate" value="89%" /> // TODO: backend
           <View style={styles.divider} />
-          <StatBox icon={<Award color="white" size={18}/>} label="Achievements" value="24" />
+          <StatBox icon={<Award color="white" size={18}/>} label="Achievements" value="24" /> // TODO: backend
         </View>
 
         {/* Daily Workout Card */}
         <View style={styles.workoutCard}>
           <View style={styles.workoutHeader}>
-            <Text style={styles.workoutTitle}>Daily Workout</Text>
+            <Text style={styles.workoutTitle}>Daily Workout</Text> 
             <View style={styles.completionStatus}>
               <Flame color="#D9A066" size={16} />
               <Text style={styles.completionText}> 0/3 completed</Text>
             </View>
           </View>
 
-          {/* Date Picker Ribbon */}
-          <View style={styles.dateRibbon}>
-            {['Tue 21', 'Wed 22', 'Thu 23', 'Fri 24'].map((date, index) => (
-              <View key={index} style={[styles.dateItem, index === 0 && styles.activeDateItem]}>
-                <Text style={[styles.dateText, index === 0 && styles.activeDateText]}>{date.split(' ')[0]}</Text>
-                <Text style={[styles.dateNumber, index === 0 && styles.activeDateText]}>{date.split(' ')[1]}</Text>
-              </View>
-            ))}
-          </View>
-
-          {/* Task List */}
-          {dailyTasks.map((task) => (
-            <View key={task.id} style={styles.taskItem}>
-              <View style={styles.taskLeft}>
-                <View style={styles.checkbox} />
-                <Text style={styles.taskTitle}>{task.title}</Text>
-              </View>
-              <View style={styles.taskReward}>
-                <Award color="#D9A066" size={14} />
-                <Text style={styles.rewardText}>{task.reward}</Text>
-              </View>
+        {/* Date Picker Ribbon */}
+        <View style={styles.dateRibbon}>
+          {['Tue 21', 'Wed 22', 'Thu 23', 'Fri 24'].map((date, index) => (
+            <View key={index} style={[styles.dateItem, index === 0 && styles.activeDateItem]}>
+              <Text style={[styles.dateText, index === 0 && styles.activeDateText]}>{date.split(' ')[0]}</Text>
+              <Text style={[styles.dateNumber, index === 0 && styles.activeDateText]}>{date.split(' ')[1]}</Text>
             </View>
           ))}
         </View>
-      </ScrollView>
 
-      {/* Bottom Navigation */}
-      <View style={styles.bottomNav}>
-        <NavItem icon={<Home color="#A1A1A1" />} label="Home" />
-        <NavItem icon={<Calendar color="#A1A1A1" />} label="Calendar" />
-        <View style={styles.activeNavCircle}>
-          <Edit3 color="#D9A066" size={32} />
+        {/* Task List */}
+        {tasks.map((task) => (
+        <View key={task.id} style={styles.taskItem}>
+          <View style={styles.taskLeft}>
+            <TouchableOpacity 
+              style={[styles.checkbox, task.completed && { backgroundColor: '#D9A066', borderColor: '#D9A066' }]} 
+              onPress={() => toggleTask(task.id)} 
+            />
+            <Text style={[styles.taskTitle, task.completed && { color: '#A1A1A1', textDecorationLine: 'line-through' }]}>{task.title}</Text>
+          </View>
+          <View style={styles.taskReward}>
+            <Award color="#D9A066" size={16} />
+            <Text style={styles.rewardText}>+{task.reward}</Text>
+          </View>
         </View>
-        <NavItem icon={<BarChart2 color="#A1A1A1" />} label="Stats" />
-        <NavItem icon={<ShoppingCart color="#A1A1A1" />} label="Market" />
+        ))}
       </View>
-    </SafeAreaView>
+
+        </ScrollView>
+
+        {/* Bottom Navigation */}
+        <View style={styles.bottomNav}>
+          <NavItem icon={<Home color="#A1A1A1" />} label="Home" /> 
+          <NavItem icon={<Calendar color="#A1A1A1" />} label="Calendar" /> // LATER: Navigate to Calendar
+          <View style={styles.activeNavCircle}>
+            <Edit3 color="#D9A066" size={32} />
+          </View>
+          <NavItem icon={<BarChart2 color="#A1A1A1" />} label="Stats" /> // LATER: Navigate to Calendar
+          <NavItem icon={<ShoppingCart color="#A1A1A1" />} label="Market" /> // LATER: Navigate to Calendar
+        </View>
+  </SafeAreaView>
   );
 };
 
