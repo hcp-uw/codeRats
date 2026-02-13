@@ -5,19 +5,32 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  ScrollView,
+  ScrollView
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import {useNavigation} from '@react-navigation/native';
+import {
+  ActivityDropdown,
+  DatePicker,
+  TimePicker,
+  DurationPicker,
+  DistancePicker
+} from "./Dropdown";
 
 export default function WorkoutScreen({ navigation }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [activity, setActivity] = useState("");
-  const [date, setDate] = useState("");
-  const [time, setTime] = useState("");
-  const [duration, setDuration] = useState("");
+  const [date, setDate] = useState(new Date());
+  const [time, setTime] = useState(new Date());
+  const [duration, setDuration] = useState({
+    hours: 0,
+    minutes: 0,
+    seconds: 0
+  });
   const [distance, setDistance] = useState("");
+
+  const activityOptions = ["Run", "Walk", "Cycle", "Weight Lift"]
 
   const handleSaveWorkout = () => {
     const workout = {
@@ -30,7 +43,7 @@ export default function WorkoutScreen({ navigation }) {
       distance,
     };
 
-    //to be changed with supabase connection, navigation, validation
+    //TODO: backend - this function is supposed to save the inputted workout data to our databases. 
     console.log("Workout saved:", workout);
   };
 
@@ -64,57 +77,38 @@ export default function WorkoutScreen({ navigation }) {
         />
 
         {/* Activity */}
-        <TouchableOpacity style={styles.dropdown}>
-          <View style={styles.dropdownLeft}>
-            <Ionicons name="walk-outline" size={20} color="#5F6A5F" />
-            <Text style={styles.dropdownText}>{activity}</Text>
-          </View>
-          <Ionicons name="chevron-down" size={20} color="#5F6A5F" />
-        </TouchableOpacity>
-
-        <Text style={styles.sectionTitle}>Activity Stats</Text>
+        <ActivityDropdown
+          label="Select Activity"
+          value={activity}
+          options={activityOptions}
+          onSelect={setActivity}
+          iconName="walk-outline"
+        />
 
         {/* Date */}
-        <TouchableOpacity style={styles.dropdown}>
-          <View style={styles.dropdownLeft}>
-            <Ionicons name="calendar-outline" size={20} color="#5F6A5F" />
-            <Text style={styles.dropdownText}>{date}</Text>
-          </View>
-          <Ionicons name="chevron-down" size={20} color="#5F6A5F" />
-        </TouchableOpacity>
+        <DatePicker
+          value={date}
+          onChange={setDate}
+        />
 
         {/* Time */}
-        <TouchableOpacity style={styles.dropdown}>
-          <View style={styles.dropdownLeft}>
-            <Ionicons name="time-outline" size={20} color="#5F6A5F" />
-            <Text style={styles.dropdownText}>
-              {time || "Time"}
-            </Text>
-          </View>
-          <Ionicons name="chevron-down" size={20} color="#5F6A5F" />
-        </TouchableOpacity>
+        <TimePicker 
+          value={time}
+          onChange={setTime}
+        />
 
         {/* Duration */}
-        <TouchableOpacity style={styles.dropdown}>
-          <View style={styles.dropdownLeft}>
-            <Ionicons name="stopwatch-outline" size={20} color="#5F6A5F" />
-            <Text style={styles.dropdownText}>
-              {duration || "Duration"}
-            </Text>
-          </View>
-          <Ionicons name="chevron-down" size={20} color="#5F6A5F" />
-        </TouchableOpacity>
+        <DurationPicker
+          value={duration}
+          onChange={setDuration}
+        />
 
         {/* Distance */}
-        <TouchableOpacity style={styles.dropdown}>
-          <View style={styles.dropdownLeft}>
-            <Ionicons name="analytics-outline" size={20} color="#5F6A5F" />
-            <Text style={styles.dropdownText}>
-              {distance || "Distance"}
-            </Text>
-          </View>
-          <Ionicons name="chevron-down" size={20} color="#5F6A5F" />
-        </TouchableOpacity>
+        <DistancePicker
+          value={distance}
+          onChange={setDistance}
+        />
+
       </ScrollView>
 
       {/* Save Button */}

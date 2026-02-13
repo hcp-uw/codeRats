@@ -486,8 +486,4 @@ export const ProfileStyles = StyleSheet.create({
   navItem: { alignItems: 'center' },
   navLabel: { fontSize: 10, color: '#A1A1A1', marginTop: 4 },
   activeNavCircle: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#FDF5E6', justifyContent: 'center', alignItems: 'center', marginBottom: 40, borderWidth: 2, borderColor: '#D9A066' }
-<<<<<<< HEAD
 });
-=======
-});
->>>>>>> 6d1b1c10ee63f97f8f8689c6db263385097be8b2

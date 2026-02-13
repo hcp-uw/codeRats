@@ -1,10 +1,7 @@
 import React from 'react';
 import { StyleSheet, View, Text, SafeAreaView, ScrollView, TouchableOpacity } from 'react-native';
 import { ChevronLeft, Home, Calendar, Edit3, BarChart2, ShoppingCart, Award, Flame, Target, TrendingUp } from 'lucide-react-native';
-<<<<<<< HEAD
 import { useState } from 'react';
-=======
->>>>>>> 6d1b1c10ee63f97f8f8689c6db263385097be8b2
 
 const Profile = () => {
   const dailyTasks = [
@@ -12,7 +9,6 @@ const Profile = () => {
     { id: 2, title: '30 burpees', reward: 40, completed: false },
     { id: 3, title: 'Stretch 15min', reward: 25, completed: false },
   ];
-<<<<<<< HEAD
   const [tasks, setTasks] = useState(dailyTasks);
 
   const toggleTask = (id) => {
@@ -20,8 +16,6 @@ const Profile = () => {
       task.id === id ? { ...task, completed: !task.completed } : task
     ));
   };
-=======
->>>>>>> 6d1b1c10ee63f97f8f8689c6db263385097be8b2
 
   return (
     <SafeAreaView style={styles.container}>
@@ -70,7 +64,6 @@ const Profile = () => {
             </View>
           </View>
 
-<<<<<<< HEAD
         {/* Date Picker Ribbon */}
         <View style={styles.dateRibbon}>
           {['Tue 21', 'Wed 22', 'Thu 23', 'Fri 24'].map((date, index) => (
@@ -112,45 +105,6 @@ const Profile = () => {
           <NavItem icon={<ShoppingCart color="#A1A1A1" />} label="Market" /> // LATER: Navigate to Calendar
         </View>
   </SafeAreaView>
-=======
-          {/* Date Picker Ribbon */}
-          <View style={styles.dateRibbon}>
-            {['Tue 21', 'Wed 22', 'Thu 23', 'Fri 24'].map((date, index) => (
-              <View key={index} style={[styles.dateItem, index === 0 && styles.activeDateItem]}>
-                <Text style={[styles.dateText, index === 0 && styles.activeDateText]}>{date.split(' ')[0]}</Text>
-                <Text style={[styles.dateNumber, index === 0 && styles.activeDateText]}>{date.split(' ')[1]}</Text>
-              </View>
-            ))}
-          </View>
-
-          {/* Task List */}
-          {dailyTasks.map((task) => (
-            <View key={task.id} style={styles.taskItem}>
-              <View style={styles.taskLeft}>
-                <View style={styles.checkbox} />
-                <Text style={styles.taskTitle}>{task.title}</Text>
-              </View>
-              <View style={styles.taskReward}>
-                <Award color="#D9A066" size={14} />
-                <Text style={styles.rewardText}>{task.reward}</Text>
-              </View>
-            </View>
-          ))}
-        </View>
-      </ScrollView>
-
-      {/* Bottom Navigation */}
-      <View style={styles.bottomNav}>
-        <NavItem icon={<Home color="#A1A1A1" />} label="Home" />
-        <NavItem icon={<Calendar color="#A1A1A1" />} label="Calendar" />
-        <View style={styles.activeNavCircle}>
-          <Edit3 color="#D9A066" size={32} />
-        </View>
-        <NavItem icon={<BarChart2 color="#A1A1A1" />} label="Stats" />
-        <NavItem icon={<ShoppingCart color="#A1A1A1" />} label="Market" />
-      </View>
-    </SafeAreaView>
->>>>>>> 6d1b1c10ee63f97f8f8689c6db263385097be8b2
   );
 };
 
