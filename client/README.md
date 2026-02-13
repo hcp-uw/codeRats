@@ -45,3 +45,12 @@ npm start
 
 Download the [Expo Go](https://expo.dev/client) app, and create an account or log in! You can either scan the QR code in your console or enter the IP manually.
 Make sure you are connected to the same network as your computer.
+
+## Installing Dependencies for CSS
+1. Within Client folder, install Nativewind
+
+```
+npm install nativewind react-native-reanimated react-native-safe-area-context
+npm install --dev tailwindcss@^3.4.17 prettier-plugin-tailwindcss@^0.5.11 babel-preset-expo
+
+```
