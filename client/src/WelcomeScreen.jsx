@@ -65,4 +65,8 @@ function FeatureCard({ icon, title, description }) {
   );
 }
 
+<<<<<<< HEAD
 // styles are imported from AuthStyles.js
+=======
+// styles are imported from AuthStyles.js
+>>>>>>> 6d1b1c10ee63f97f8f8689c6db263385097be8b2
