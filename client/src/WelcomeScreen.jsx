@@ -1,8 +1,19 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Text, View, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
 import { WelcomeStyles as styles } from './AuthStyles';
+import { supabase } from '../lib/supabase';
 
 export default function WelcomeScreen({ navigation }) {
+   useEffect(() => {
+    console.log("SUPABASE_URL:", process.env.EXPO_PUBLIC_SUPABASE_URL);
+
+    supabase.auth.getSession().then(({ data, error }) => {
+      console.log("SUPABASE session:", data?.session);
+      console.log("SUPABASE error:", error);
+    });
+  }, []);
+
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
