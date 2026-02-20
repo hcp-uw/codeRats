@@ -20,17 +20,13 @@ import {
 export default function WorkoutScreen({ navigation }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [activity, setActivity] = useState("");
+  const [activity, setActivity] = useState("Run");
   const [date, setDate] = useState(new Date());
   const [time, setTime] = useState(new Date());
-  const [duration, setDuration] = useState({
-    hours: 0,
-    minutes: 0,
-    seconds: 0
-  });
+  const [duration, setDuration] = useState("00:00:00");
   const [distance, setDistance] = useState("");
 
-  const activityOptions = ["Run", "Walk", "Cycle", "Weight Lift"]
+  const activityOptions = ["Run", "Walk", "Cycle", "Weights"]
 
   const handleSaveWorkout = () => {
     const workout = {
