@@ -5,11 +5,17 @@ import {
   View,
   TouchableOpacity,
   ScrollView,
+  Modal,
+  TextInput,
+  TouchableWithoutFeedback,
+  Keyboard,
   SafeAreaView,
+
 } from 'react-native';
 
 export default function GoalsScreen({ navigation }) {
 
+//TODO: replace with Supbase fetch for user goals
   const [goals] = useState([
     {
       icon: '🏋️',
@@ -28,10 +34,15 @@ export default function GoalsScreen({ navigation }) {
     },
   ]); 
 
+  const [modalVisible, setModalVisible] = useState(false);
+
     
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView 
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={{ paddingBottom: 40 }}>
+
         {/* Page Title */}
         <View style={styles.header}>
             <Text style={styles.headerTitle}>🎯 Goals</Text>
@@ -45,19 +56,28 @@ export default function GoalsScreen({ navigation }) {
         <View style={styles.statsRow}>
             <View style={styles.statBox}>   
                 <Text style={styles.statLabel}>Days Exercised</Text>
+                {/* TODO: pull from Supabase the user stats */}
                 <Text style={styles.statValue}>45</Text>
+
+                {/* TODO: pull from Supabase the user stats */}
                 <Text style={styles.statChange}>+5</Text>
             </View>
 
         <View style={styles.statBox}>   
                 <Text style={styles.statLabel}>Weekly Miles</Text>
+                {/* TODO: pull from Supabase the user stats */}
                 <Text style={styles.statValue}>30</Text>
+
+                {/* TODO: pull from Supabase the user stats */}
                 <Text style={styles.statChange}>+3</Text>
             </View>
         
         <View style={styles.statBox}>   
                 <Text style={styles.statLabel}>Max Bench</Text>
+                {/* TODO: pull from Supabase the user stats */}
                 <Text style={styles.statValue}>200</Text>
+
+                {/* TODO: pull from Supabase the user stats */}
                 <Text style={styles.statChange}>+10</Text>
             </View>
         </View>
@@ -66,6 +86,8 @@ export default function GoalsScreen({ navigation }) {
     {/* Muscle Groups Placeholder */}
     <View style={styles.tanCard}>
         <Text style={styles.cardTitle}>Muscle Groups Targeted</Text>
+
+        {/* TODO: replace with a work analytics chart */}
         <Text style={styles.placeholderText}>
         Chart coming soon
             </Text>
@@ -76,75 +98,160 @@ export default function GoalsScreen({ navigation }) {
         <Text style={styles.cardTitle}>Your Goals</Text>
 
         {goals.map((goal, index) => (
-            <View key={index} style={styles.goalRow}>
+          <View key={index}>
+
+            {/* box row*/}
+            <View style={styles.goalRow}>
+              <Text style={styles.goalIcon}>{goal.icon}</Text>
+
         
-                <Text style={styles.goalIcon}> {goal.icon}</Text>
                 <View style={{flex:1}}>
                     <Text style={styles.goalTitle}>{goal.title}</Text>
                     <Text style={styles.goalSubtext}>{goal.desc}</Text>
                 </View>
 
-                {/* Placeholder for edit/delete buttons */}
-                <Text style={{color:'#fff'}}>•••</Text>
-                
+                {/* TODO: Placeholder for edit/delete buttons */}
+                <Text style={styles.menuDots}>•••</Text>
                 </View>
-                ))}
 
+                {/* Divider Line*/}
+                {index !== goals.length -1 && (
+                  <View style={styles.divider}/>
+                )}
+
+              </View>
+            ))}
             </View>
 
-            {/* Navigation Button */}
-      <TouchableOpacity
-       style={styles.primaryButton}
-       onPress={() => console.log("Add Goal screen coming soon")}>
+      {/* Buttons */}
 
+      {/* Navigation Button */}
+      <View style={styles.buttonContainer}>
+
+        <TouchableOpacity
+          style={styles.primaryButton}
+          onPress={() => setModalVisible(true)}>
+
+        {/* TODO: backend */}
         <Text style={styles.primaryButtonText}>Set New Goal</Text>
+        </TouchableOpacity>
+
+       {/* TODO: navigate to create goal */}
+        <TouchableOpacity style={styles.secondaryButton}>
+          <Text style={styles.secondaryButtonText}>View History</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.secondaryButton}>
-        <Text style={styles.secondaryButtonText}>View History</Text>
-      </TouchableOpacity>
+      </View>
 
       </ScrollView>
+
+    {/* Modal */}
+
+    <Modal
+      visible={modalVisible}
+      animationType="slide"
+      transparent={true}>
+
+      <View style={styles.modalOverlay}> 
+        
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}> 
+          <View style={styles.modalCard}>
+          {/* Close */}
+            <TouchableOpacity
+            style={styles.closeButton}
+            onPress={() => setModalVisible(false)}>
+              <Text style={{fontSize:18}}>x</Text>
+            </TouchableOpacity>
+
+            <Text style={styles.modalTitle}>Create Goal</Text>
+
+           {/* TODO: controlled input */}
+           <TextInput
+           placeholder="Title of Goal"
+           placeholderTextColor="#fff"
+           style={styles.input}/>
+
+           {/* TODO  */}
+           <TextInput
+           placeholder="Description (how to get there, when, etc.)"
+           placeholderTextColor="#fff"
+           multiline
+           style={[styles.input, {height:90}]}/>
+
+           {/* TODO: icon picker */}
+            <TouchableOpacity style={styles.iconPicker}>
+              <Text style={{color:'#fff'}}>Choose Icon ▼</Text>
+            </TouchableOpacity>
+
+             {/* TODO: insert Goal  */}
+            <TouchableOpacity style={styles.saveButton}>
+              <Text style={{color:'#fff', fontWeight:'700'}}>Save Goal</Text>
+            </TouchableOpacity>
+
+          </View>
+          </TouchableWithoutFeedback>
+
+        </View>
+      </Modal>  
+
     </SafeAreaView>
+
   );
 }
       
 
 const styles = StyleSheet.create({
+
   container: {
     flex: 1,
-    backgroundColor: '#F5F0E8',
+    backgroundColor: '#3D5A3C',
     paddingHorizontal: 16,
   },
   header:{
     marginTop:20,
-    marginBottom:16
+    marginBottom:18
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#3D5A3C',
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#fff',
   },
   headerSubtitle: {
-    color: '#3D5A3C',
-    opacity:.6,
+    color: '#fff',
+    opacity:.8,
+    marginTop: 4,
   },
 
   greenCard: {
-    backgroundColor: '#3D5A3C',
-    borderRadius: 16,
+    backgroundColor: '#446646',
+    borderRadius: 18,
     padding: 16,
-    marginBottom: 16,
+    marginBottom: 18,
+
+    shadowColor:'#000',
+    shadowOpacity: .12,
+    shadowRadius:8,
+    shadowOffset:{width:0,height:4},
+    elevation:5,
+
   },
+
   tanCard: {
     backgroundColor: '#D4A574',
-    borderRadius: 16,
+    borderRadius: 18,
     padding: 16,
-    marginBottom: 16,
+    marginBottom: 18,
+
+    shadowColor:'#000',
+    shadowOpacity: .12,
+    shadowRadius:8,
+    shadowOffset:{width:0,height:4},
+    elevation:5,
+
   },
   cardTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '700',
     color: '#fff',
     marginBottom: 12,
   },
@@ -153,8 +260,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   statBox: {
+    backgroundColor: 'rgba(255,255,255,.07',
+    padding:12,
+    borderRadius:14,
     alignItems: 'center',
     flex: 1,
+    marginHorizontal:4,
   },
   statValue: {
     fontSize: 20,
@@ -169,6 +280,7 @@ const styles = StyleSheet.create({
   statChange: {
     fontSize: 12,
     color: '#D4A574',
+    marginTop:2,
   },
   placeholderText: {
     color: '#fff',
@@ -178,13 +290,16 @@ const styles = StyleSheet.create({
   
   goalRow: {
     flexDirection: 'row',
-     alignItems: 'center',
-     marginBottom: 16,
+    alignItems: 'center',
+    paddingVertical:14,
   },
   goalIcon: {
-    fontSize: 22,
+    fontSize: 20,
     marginRight: 12,
-    alignSelf: 'center',
+    backgroundColor:'rgba(255,255,255,.15',
+    padding:8,
+    borderRadius:10,
+
   },
   goalTitle: {
     color: '#fff',
@@ -194,29 +309,105 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#fff',
     opacity: 0.7,
-    marginBottom: 8,
+    marginBottom: 2,
   },
+
+  menuDots:{
+    color:'#fff',
+    fontSize:18
+  },
+
+  divider:{
+    height:1,
+    backgroundColor:'rgba(255,255,255,.15',
+  },
+
+  buttonContainer:{
+    alignItems:'center',
+    marginTop:10,
+  },
+
     primaryButton: {
     backgroundColor: '#fff',
     paddingVertical: 14,
-    borderRadius: 8,
+    borderRadius: 14,
     alignItems: 'center',
-    marginBottom: 12,
+    width:'75%',
+    marginBottom: 14,
+
+    shadowColor:'#000',
+    shadowOpacity: .15,
+    shadowRadius:6,
+    shadowOffset:{width:0,height:3},
   },
+
   primaryButtonText: {
     color: '#3D5A3C',
-    fontWeight: '600',
+    fontWeight: '700',
+    fontSize:16,
   },
+
   secondaryButton: {
-    borderColor: '#3D5A3C',
-    borderWidth: 1,
+    borderColor: '#fff',
+    borderWidth: 2,
     paddingVertical: 14,
-    borderRadius: 8,
+    borderRadius: 14,
     alignItems: 'center',
-    marginBottom: 24,
+    width:'75%',
   },
+
   secondaryButtonText: {
-    color: '#3D5A3C',
-    fontWeight: '600',
+    color: '#fff',
+    fontWeight: '700',
+  },
+
+  modalOverlay:{
+    flex:1,
+    backgroundColor:'rgba(0,0,0,0.55)',
+    justifyContent:'center',
+    alignItems:'center',
+  },
+
+  modalCard:{
+    width:'85%',
+    backgroundColor:'#D4A574',
+    borderRadius:20,
+    padding:20,
+  },
+
+  modalTitle:{
+    fontSize:20,
+    fontWeight:'800',
+    color:'#fff',
+    marginBottom:18,
+  },
+
+  closeButton:{
+    position:'absolute',
+    right:14,
+    top:14,
+    zIndex:10,
+  },
+
+  input:{
+    backgroundColor:'#C8935C',
+    borderRadius:12,
+    padding:14,
+    marginBottom:14,
+    color:'#fff',
+  },
+
+  iconPicker:{
+    backgroundColor:'#C8935C',
+    padding:14,
+    borderRadius:12,
+    marginBottom:20,
+  },
+
+  saveButton:{
+    backgroundColor:'#3D5A3C',
+    padding:16,
+    borderRadius:14,
+    alignItems:'center',
   },
 });

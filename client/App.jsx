@@ -23,10 +23,8 @@ export default function App() {
         <Stack.Screen name="LogInScreen" component={LogInScreen} />
         <Stack.Screen name="SignUpScreen" component={SignUpScreen} />
         <Stack.Screen name="Profile" component={Profile} />
-        
         <Stack.Screen name="GoalsScreen" component={GoalsScreen} />
       </Stack.Navigator>
-      <StatusBar style="auto" />
     </NavigationContainer>
   );
 }
