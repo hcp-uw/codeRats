@@ -16,25 +16,67 @@ import {
 export default function GoalsScreen({ navigation }) {
 
 //TODO: replace with Supbase fetch for user goals
-  const [goals] = useState([
+  const [goals, setGoals] = useState([
     {
+      id: '1',
       icon: '🏋️',
       title: "Bench 225 lbs",
       desc: "Target by June 2025",
     },
     {
+      id: '2',
       icon: '🏃',
       title: "Sub 3 Hour Marathon",
       desc: "Train consistently for 6 months",    
     },
     {
+      id: '3',
       icon: '🔥',
       title: "Workout Everyday",
       desc: "At least 30 minutes daily",    
     },
   ]); 
 
+  const [goalTitle, setGoalTitle] = useState('');
+  const [goalDesc, setGoalDesc] = useState('');
+  const [goalIcon, setGoalIcon] = useState('🔥');
+
+
   const [modalVisible, setModalVisible] = useState(false);
+
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [selectedGoal, setSelectedGoal] = useState(null);
+  const [isediting, setIsEditing] = useState(false);
+
+  const handleSaveGoal = () => {
+
+    if (!goalTitle.trim()) return;
+
+    if (isediting) {
+      setGoals(prev =>
+        prev.map(g => g.id === selectedGoal.id ? { ...g, title: goalTitle, desc: goalDesc, icon: goalIcon } : g)
+      );
+    } else {
+      const newGoal = {
+        id: Date.now().toString(),
+        title: goalTitle,
+        desc: goalDesc,
+        icon: goalIcon,
+      };
+      setGoals(prev => [...prev, newGoal]);
+    }
+
+    setGoalTitle('');
+    setGoalDesc('');
+    setGoalIcon('🔥');
+    setModalVisible(false);
+    setIsEditing(false);
+  };
+
+  const handleDelete = () => {
+    setGoals(prev => prev.filter(g => g.id !== selectedGoal.id));
+    setMenuVisible(false);
+  };
 
     
   return (
@@ -110,8 +152,15 @@ export default function GoalsScreen({ navigation }) {
                     <Text style={styles.goalSubtext}>{goal.desc}</Text>
                 </View>
 
-                {/* TODO: Placeholder for edit/delete buttons */}
+                <TouchableOpacity
+                  onPress={() => {
+                    setSelectedGoal(goal);
+                    setMenuVisible(true);
+                }}
+                > 
+                {/* Edit/delete buttons */}
                 <Text style={styles.menuDots}>•••</Text>
+                </TouchableOpacity>
                 </View>
 
                 {/* Divider Line*/}
@@ -179,20 +228,59 @@ export default function GoalsScreen({ navigation }) {
            style={[styles.input, {height:90}]}/>
 
            {/* TODO: icon picker */}
-            <TouchableOpacity style={styles.iconPicker}>
-              <Text style={{color:'#fff'}}>Choose Icon ▼</Text>
-            </TouchableOpacity>
+            <Text style={{ color:'#fff', marginBottom:6}}>Choose Icon</Text>
+
+            <TextInput
+              value={goalIcon}
+              onChangeText={(text) => setGoalIcon(text.slice(-2))}
+              style={styles.emojiInput}
+              maxLength={2}
+              placeholder="Emoji Icon"
+              placeholderTextColor="#fff"
+              autoCorrect={false}
+              autoCapitalize='none'
+              />
+
 
              {/* TODO: insert Goal  */}
-            <TouchableOpacity style={styles.saveButton}>
+            <TouchableOpacity
+            style={styles.saveButton}
+            onPress={handleSaveGoal}>
               <Text style={{color:'#fff', fontWeight:'700'}}>Save Goal</Text>
             </TouchableOpacity>
 
           </View>
           </TouchableWithoutFeedback>
+          </View>
+    </Modal>
+    {/* Edit Option Modal */}
+    <Modal visible={menuVisible} transparent animationType="fade"> 
+      <View style={styles.modalOverlay}>
+        <View style={styles.menuCard}>
+
+          <TouchableOpacity style={styles.menuOption} onPress={() => {
+            setMenuVisible(false);
+            setIsEditing(true);
+            setGoalTitle(selectedGoal.title);
+            setGoalDesc(selectedGoal.desc);
+            setGoalIcon(selectedGoal.icon);
+            setModalVisible(true);
+          }}>
+
+            <Text style={styles.menuText}>Edit Goal</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuOption} onPress={handleDelete}>
+            <Text style={styles.menuText}>Delete Goal</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuOption} onPress={() => setMenuVisible(false)}>
+            <Text style={[styles.menuText, {color:'red'}]}>Cancel</Text>
+          </TouchableOpacity>
 
         </View>
-      </Modal>  
+      </View>
+    </Modal>
 
     </SafeAreaView>
 
@@ -317,6 +405,21 @@ const styles = StyleSheet.create({
     fontSize:18
   },
 
+  menuCard: {
+    backgroundColor: '#fff',
+    padding:20,
+    borderRadius: 16,
+    width: '75%',
+  },
+  menuOption: {
+    paddingVertical: 14,
+  },
+
+  menuText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },  
+
   divider:{
     height:1,
     backgroundColor:'rgba(255,255,255,.15',
@@ -340,6 +443,7 @@ const styles = StyleSheet.create({
     shadowRadius:6,
     shadowOffset:{width:0,height:3},
   },
+
 
   primaryButtonText: {
     color: '#3D5A3C',
@@ -396,6 +500,17 @@ const styles = StyleSheet.create({
     marginBottom:14,
     color:'#fff',
   },
+
+   emojiInput: {
+    backgroundColor:'#C8935C',
+    borderRadius:12,
+    padding:14,
+    marginBottom:28,
+    color:'#fff',
+    fontSize:12,
+    textAlign:'center',
+  },
+
 
   iconPicker:{
     backgroundColor:'#C8935C',
