@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, View, KeyboardAvoidingView, Platform} from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import WelcomeScreen from './src/WelcomeScreen';
 import LogInScreen from './src/LogInScreen';
 import SignUpScreen from './src/SignUpScreen';
@@ -10,29 +10,22 @@ import { createStackNavigator } from '@react-navigation/stack';
 import WorkoutScreen from './src/InputWorkoutScreen'; 
 const Stack = createStackNavigator();
 
-
 export default function App() {
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={{ flex: 1 }}
-    >
     <NavigationContainer>
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
         }}
       >
+        <Stack.Screen name="WorkoutScreen" component={WorkoutScreen} />
         <Stack.Screen name="Welcome" component={WelcomeScreen} />
         <Stack.Screen name="LogInScreen" component={LogInScreen} />
         <Stack.Screen name="SignUpScreen" component={SignUpScreen} />
         <Stack.Screen name="Profile" component={Profile} />
-        <Stack.Screen name="WorkoutScreen" component={WorkoutScreen} />
         <Stack.Screen name="GoalsScreen" component={GoalsScreen} />
       </Stack.Navigator>
-      <StatusBar style="auto" />
     </NavigationContainer>
-    </KeyboardAvoidingView>
   );
 }
 
