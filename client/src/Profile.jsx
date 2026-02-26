@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, View, Text, SafeAreaView, ScrollView, TouchableOpacity } from 'react-native';
 import { ChevronLeft, Home, Calendar, Edit3, BarChart2, ShoppingCart, Award, Flame, Target, TrendingUp } from 'lucide-react-native';
 import { useState } from 'react';
+import Navbar from './Navbar';
 
 const Profile = () => {
   const dailyTasks = [
@@ -93,17 +94,7 @@ const Profile = () => {
       </View>
 
         </ScrollView>
-
-        {/* Bottom Navigation */}
-        <View style={styles.bottomNav}>
-          <NavItem icon={<Home color="#A1A1A1" />} label="Home" /> 
-          <NavItem icon={<Calendar color="#A1A1A1" />} label="Calendar" /> // LATER: Navigate to Calendar
-          <View style={styles.activeNavCircle}>
-            <Edit3 color="#D9A066" size={32} />
-          </View>
-          <NavItem icon={<BarChart2 color="#A1A1A1" />} label="Stats" /> // LATER: Navigate to Calendar
-          <NavItem icon={<ShoppingCart color="#A1A1A1" />} label="Market" /> // LATER: Navigate to Calendar
-        </View>
+      <Navbar />
   </SafeAreaView>
   );
 };
@@ -119,12 +110,6 @@ const StatBox = ({ icon, label, value }) => (
   </View>
 );
 
-const NavItem = ({ icon, label }) => (
-  <TouchableOpacity style={styles.navItem}>
-    {icon}
-    <Text style={styles.navLabel}>{label}</Text>
-  </TouchableOpacity>
-);
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#3D523B' },

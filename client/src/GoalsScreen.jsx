@@ -10,8 +10,8 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   SafeAreaView,
-
 } from 'react-native';
+import Navbar from './Navbar'; 
 
 export default function GoalsScreen({ navigation }) {
 
@@ -193,6 +193,7 @@ export default function GoalsScreen({ navigation }) {
       </View>
 
       </ScrollView>
+      <Navbar/>
 
     {/* Modal */}
 

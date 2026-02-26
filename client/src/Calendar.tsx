@@ -3,6 +3,7 @@ import { StyleSheet, View, Text, SafeAreaView, ScrollView, TouchableOpacity } fr
 import { ChevronLeft, Home, Edit3, BarChart2, ShoppingCart, Award, Flame, Target, TrendingUp } from 'lucide-react-native';
 import { useState } from 'react';
 import CalendarHeader from './CalendarHeader';
+import Navbar from './Navbar';
 
 interface Workout {
   id: string;
@@ -101,6 +102,7 @@ export function Calendar({
         </View>
       ))}
       </ScrollView>
+      <Navbar />
     </SafeAreaView>
   );
 }
