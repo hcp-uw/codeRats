@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -10,21 +10,11 @@ import {
   Alert,
 } from 'react-native';
 
-import { supabase } from '../lib/supabase';
-
 export default function LogInScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
 
-  useEffect(() => {
-  console.log("SUPABASE_URL:", process.env.EXPO_PUBLIC_SUPABASE_URL);
-
-  supabase.auth.getSession().then(({ data, error }) => {
-    console.log("SUPABASE session:", data?.session);
-    console.log("SUPABASE error:", error);
-  });
-}, []);
 
   const handleLogin = () => {
     if (!email || !password) {
