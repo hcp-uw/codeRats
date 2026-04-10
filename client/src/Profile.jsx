@@ -1,6 +1,8 @@
 import React from 'react';
 import { StyleSheet, View, Text, SafeAreaView, ScrollView, TouchableOpacity } from 'react-native';
 import { ChevronLeft, Home, Calendar, Edit3, BarChart2, ShoppingCart, Award, Flame, Target, TrendingUp } from 'lucide-react-native';
+import { useState } from 'react';
+import Navbar from './Navbar';
 
 const Profile = () => {
   const dailyTasks = [
@@ -8,6 +10,13 @@ const Profile = () => {
     { id: 2, title: '30 burpees', reward: 40, completed: false },
     { id: 3, title: 'Stretch 15min', reward: 25, completed: false },
   ];
+  const [tasks, setTasks] = useState(dailyTasks);
+
+  const toggleTask = (id) => {
+    setTasks(tasks.map(task =>
+      task.id === id ? { ...task, completed: !task.completed } : task
+    ));
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -56,43 +65,37 @@ const Profile = () => {
             </View>
           </View>
 
-          {/* Date Picker Ribbon */}
-          <View style={styles.dateRibbon}>
-            {['Tue 21', 'Wed 22', 'Thu 23', 'Fri 24'].map((date, index) => (
-              <View key={index} style={[styles.dateItem, index === 0 && styles.activeDateItem]}>
-                <Text style={[styles.dateText, index === 0 && styles.activeDateText]}>{date.split(' ')[0]}</Text>
-                <Text style={[styles.dateNumber, index === 0 && styles.activeDateText]}>{date.split(' ')[1]}</Text>
-              </View>
-            ))}
-          </View>
-
-          {/* Task List */}
-          {dailyTasks.map((task) => (
-            <View key={task.id} style={styles.taskItem}>
-              <View style={styles.taskLeft}>
-                <View style={styles.checkbox} />
-                <Text style={styles.taskTitle}>{task.title}</Text>
-              </View>
-              <View style={styles.taskReward}>
-                <Award color="#D9A066" size={14} />
-                <Text style={styles.rewardText}>{task.reward}</Text>
-              </View>
+        {/* Date Picker Ribbon */}
+        <View style={styles.dateRibbon}>
+          {['Tue 21', 'Wed 22', 'Thu 23', 'Fri 24'].map((date, index) => (
+            <View key={index} style={[styles.dateItem, index === 0 && styles.activeDateItem]}>
+              <Text style={[styles.dateText, index === 0 && styles.activeDateText]}>{date.split(' ')[0]}</Text>
+              <Text style={[styles.dateNumber, index === 0 && styles.activeDateText]}>{date.split(' ')[1]}</Text>
             </View>
           ))}
         </View>
-      </ScrollView>
 
-      {/* Bottom Navigation */}
-      <View style={styles.bottomNav}>
-        <NavItem icon={<Home color="#A1A1A1" />} label="Home" />
-        <NavItem icon={<Calendar color="#A1A1A1" />} label="Calendar" />
-        <View style={styles.activeNavCircle}>
-          <Edit3 color="#D9A066" size={32} />
+        {/* Task List */}
+        {tasks.map((task) => (
+        <View key={task.id} style={styles.taskItem}>
+          <View style={styles.taskLeft}>
+            <TouchableOpacity 
+              style={[styles.checkbox, task.completed && { backgroundColor: '#D9A066', borderColor: '#D9A066' }]} 
+              onPress={() => toggleTask(task.id)} 
+            />
+            <Text style={[styles.taskTitle, task.completed && { color: '#A1A1A1', textDecorationLine: 'line-through' }]}>{task.title}</Text>
+          </View>
+          <View style={styles.taskReward}>
+            <Award color="#D9A066" size={16} />
+            <Text style={styles.rewardText}>+{task.reward}</Text>
+          </View>
         </View>
-        <NavItem icon={<BarChart2 color="#A1A1A1" />} label="Stats" />
-        <NavItem icon={<ShoppingCart color="#A1A1A1" />} label="Market" />
+        ))}
       </View>
-    </SafeAreaView>
+
+        </ScrollView>
+      <Navbar />
+  </SafeAreaView>
   );
 };
 
@@ -107,12 +110,6 @@ const StatBox = ({ icon, label, value }) => (
   </View>
 );
 
-const NavItem = ({ icon, label }) => (
-  <TouchableOpacity style={styles.navItem}>
-    {icon}
-    <Text style={styles.navLabel}>{label}</Text>
-  </TouchableOpacity>
-);
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#3D523B' },
