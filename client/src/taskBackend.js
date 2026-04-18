@@ -37,7 +37,19 @@ function combineDateTimeToISO(date, time) {
   return local.toISOString();
 }
 
-export async function createTask({ task_name, duration, start_time = null, user_id }) {
+export async function createTask({
+  task_name,
+  description = null,
+  activity_type = null,
+  duration,
+  start_time = null,
+  distance = null,
+  muscle_groups = null,
+  exercise = null,
+  weight = null,
+  sets_reps = null,
+  user_id,
+}) {
   assertNonEmptyString(task_name, "task_name");
   const durationNum = assertFiniteNumber(duration, "duration");
 
@@ -45,14 +57,31 @@ export async function createTask({ task_name, duration, start_time = null, user_
     throw new Error("user_id is required");
   }
 
+  const row = {
+    task_name: task_name.trim(),
+    description: description ?? null,
+    activity_type: activity_type ?? null,
+    duration: durationNum,
+    start_time,
+    user_id,
+  };
+
+  // run-specific fields
+  if (activity_type === "run") {
+    row.distance = distance !== null ? assertFiniteNumber(distance, "distance") : null;
+  }
+
+  // weight lift-specific fields
+  if (activity_type === "weight_lift") {
+    row.muscle_groups = muscle_groups ?? null;
+    row.exercise = exercise ?? null;
+    row.weight = weight !== null ? assertFiniteNumber(weight, "weight") : null;
+    row.sets_reps = sets_reps ?? null;
+  }
+
   const { data, error } = await supabase
     .from(TABLE)
-    .insert({
-      task_name: task_name.trim(),
-      duration: durationNum,
-      start_time,
-      user_id,
-    })
+    .insert(row)
     .select("*")
     .single();
 
@@ -85,12 +114,21 @@ export async function updateTask(task_id, patch) {
     assertNonEmptyString(patch.task_name, "task_name");
     updateObj.task_name = patch.task_name.trim();
   }
+  if (patch.description !== undefined) updateObj.description = patch.description;
+  if (patch.activity_type !== undefined) updateObj.activity_type = patch.activity_type;
   if (patch.duration !== undefined) {
     updateObj.duration = assertFiniteNumber(patch.duration, "duration");
   }
-  if (patch.start_time !== undefined) {
-    updateObj.start_time = patch.start_time;
+  if (patch.start_time !== undefined) updateObj.start_time = patch.start_time;
+  if (patch.distance !== undefined) {
+    updateObj.distance = patch.distance !== null ? assertFiniteNumber(patch.distance, "distance") : null;
   }
+  if (patch.muscle_groups !== undefined) updateObj.muscle_groups = patch.muscle_groups;
+  if (patch.exercise !== undefined) updateObj.exercise = patch.exercise;
+  if (patch.weight !== undefined) {
+    updateObj.weight = patch.weight !== null ? assertFiniteNumber(patch.weight, "weight") : null;
+  }
+  if (patch.sets_reps !== undefined) updateObj.sets_reps = patch.sets_reps;
 
   const { data, error } = await supabase
     .from(TABLE)
@@ -113,12 +151,34 @@ export async function deleteTask(task_id) {
   return (count ?? 0) > 0;
 }
 
-export async function createTaskFromWorkoutForm({ title, duration, date, time, user_id }) {
+export async function createTaskFromWorkoutForm({
+  title,
+  description,
+  activity_type,
+  date,
+  time,
+  duration,
+  // run
+  distance,
+  // weight lift
+  muscle_groups,
+  exercise,
+  weight,
+  sets_reps,
+  user_id,
+}) {
   const start_time = combineDateTimeToISO(date, time);
   return createTask({
     task_name: title,
+    description,
+    activity_type,
     duration,
     start_time,
+    distance,
+    muscle_groups,
+    exercise,
+    weight,
+    sets_reps,
     user_id,
   });
 }
