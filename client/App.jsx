@@ -1,3 +1,5 @@
+import { supabase } from './lib/supabase'
+
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View, KeyboardAvoidingView, Platform} from 'react-native';
 
@@ -19,6 +21,15 @@ import Navbar from './src/Navbar';
 
 
 export default function App() {
+  const [instruments, setInstruments] = useState([])
+  useEffect(() => {
+    getInstruments()
+  }, [])
+  async function getInstruments() {
+    const { data } = await supabase.from('instruments').select()
+    setInstruments(data)
+  }
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}

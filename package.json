@@ -22,7 +22,11 @@
     "@react-native-picker/picker": "^2.11.4",
     "@rneui/themed": "^5.0.0",
     "@supabase/supabase-js": "^2.91.1",
-    "expo": "^54.0.32",
+    "expo": "^54.0.33",
     "expo-sqlite": "~16.0.10"
+  },
+  "devDependencies": {
+    "@types/react": "~19.1.10",
+    "typescript": "~5.9.2"
   }
 }
