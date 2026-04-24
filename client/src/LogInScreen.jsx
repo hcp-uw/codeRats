@@ -7,13 +7,18 @@ export default function LogInScreen({ navigation }) {
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!email || !password) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
-    // TODO: Handle login logic
-    Alert.alert('Success', 'Welcome back!');
+    
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (error) {
+      Alert.alert('Login Failed', error.message);
+    }
+    // On success, AuthContext detects the new session and RootNavigator redirects automatically
   };
 
   return (
@@ -85,7 +90,7 @@ export default function LogInScreen({ navigation }) {
         {/* Login Button */}
         <TouchableOpacity
           style={styles.loginButton}
-          onPress={() => navigation?.navigate('Profile')}
+          onPress={handleLogin}
         >
           <Text style={styles.loginButtonText}>Login</Text>
         </TouchableOpacity>

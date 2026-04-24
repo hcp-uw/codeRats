@@ -9,7 +9,7 @@ export default function SignUpScreen({ navigation }) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [termsAccepted, setTermsAccepted] = useState(false);
 
-  const handleSignUp = () => {
+  const handleSignUp = async () => {
     if (!username || !email || !password || !confirmPassword) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
@@ -18,12 +18,28 @@ export default function SignUpScreen({ navigation }) {
       Alert.alert('Error', 'Passwords do not match');
       return;
     }
+    if (password.length < 8) {
+      Alert.alert('Error', 'Password must be at least 8 characters');
+      return;
+    }
     if (!termsAccepted) {
       Alert.alert('Error', 'Please accept the Terms of Service');
       return;
     }
-    // TODO: Handle sign up logic
-    Alert.alert('Success', 'Account created! Ready to start your adventure.');
+    
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { username }
+      }
+    });
+
+    if (error) {
+      Alert.alert('Sign Up Failed', error.message);
+    } else {
+      Alert.alert('Success', 'Check your email to confirm your account!');
+    }
   };
 
   return (
@@ -118,7 +134,7 @@ export default function SignUpScreen({ navigation }) {
         {/* Sign Up Button */}
         <TouchableOpacity
           style={styles.signUpButton}
-          onPress={() => navigation?.navigate('Profile')}
+          onpress={handleSignUp}
         >
           <Text style={styles.signUpButtonText}>Create Account</Text>
         </TouchableOpacity>
