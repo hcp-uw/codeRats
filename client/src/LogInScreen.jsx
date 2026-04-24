@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Text, View, TouchableOpacity, TextInput, ScrollView, SafeAreaView, Alert } from 'react-native';
 import { LogInStyles as styles } from './AuthStyles';
+import { supabase } from '../lib/supabase';
 
 export default function LogInScreen({ navigation }) {
   const [email, setEmail] = useState('');

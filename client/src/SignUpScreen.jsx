@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Text, View, TouchableOpacity, TextInput, ScrollView, SafeAreaView, Alert } from 'react-native';
 import { SignUpStyles as styles } from './AuthStyles';
+import { supabase } from '../lib/supabase';
 
 export default function SignUpScreen({ navigation }) {
   const [username, setUsername] = useState('');
@@ -134,7 +135,7 @@ export default function SignUpScreen({ navigation }) {
         {/* Sign Up Button */}
         <TouchableOpacity
           style={styles.signUpButton}
-          onpress={handleSignUp}
+          onPress={handleSignUp}
         >
           <Text style={styles.signUpButtonText}>Create Account</Text>
         </TouchableOpacity>
