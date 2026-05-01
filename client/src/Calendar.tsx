@@ -63,6 +63,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 18,
     width: '100%',
+    // Add these lines:
+    backgroundColor: '#D4A574', 
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    borderRadius: 12,
   },
   iconButton: {
     padding: 10,
@@ -70,7 +75,7 @@ const styles = StyleSheet.create({
   },
   monthTitle: {
     fontFamily: 'Arial',
-    color: '#bdbdbd',
+    color: '#3d5a3c',
     fontSize: 20,
     textAlign: 'center',
   },
@@ -91,26 +96,31 @@ const styles = StyleSheet.create({
   daysGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start', 
     marginBottom: 8,
+    width: '100%',
   },
   dayCell: {
-    width: '13.5%',
-    height: 88,
-    borderRadius: 5,
+    width: '14.28%', // Exactly 1/7th of the width
+    height: 90,
+    padding: 4, // This creates the "gap" between days
+  },
+  dayInner: {
+    flex: 1, // Fill the dayCell
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
     position: 'relative',
   },
-  dayButton: {
-    padding: 10,
-  },
+  // Update these to apply to the inner box, not the cell
   todayCell: {
     backgroundColor: '#d4a574',
   },
   normalDayCell: {
     backgroundColor: 'rgba(212,207,186,0.5)',
+  },
+  dayButton: {
+    padding: 10,
   },
   dayNumber: {
     fontFamily: 'Arial',
@@ -230,7 +240,7 @@ const styles = StyleSheet.create({
 });
 
 export default function MonthlyCalendar() {
-  const [currentDate, setCurrentDate] = useState(new Date(2026, 3, 1));
+  const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
@@ -293,11 +303,11 @@ export default function MonthlyCalendar() {
       <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.header}>
             <TouchableOpacity style={styles.iconButton} onPress={handlePreviousMonth}>
-              <ChevronLeft size={24} color="#bdbdbd" />
+              <ChevronLeft size={24} color="#3d5a3c" />
             </TouchableOpacity>
             <Text style={styles.monthTitle}>{monthName}</Text>
             <TouchableOpacity style={styles.iconButton} onPress={handleNextMonth}>
-              <ChevronRight size={24} color="#bdbdbd" />
+              <ChevronRight size={24} color="#3d5a3c" />
             </TouchableOpacity>
           </View>
 
@@ -311,29 +321,32 @@ export default function MonthlyCalendar() {
           </View>
 
           <View style={styles.daysGrid}>
+            {/* Empty cells for padding at the start */}
             {Array.from({ length: startingDayOfWeek }).map((_, index) => (
               <View key={`empty-${index}`} style={styles.dayCell} />
             ))}
 
+            {/* Actual days */}
             {Array.from({ length: daysInMonth }).map((_, index) => {
               const day = index + 1;
               const hasItems = hasSchedule(day);
               const isTodayDate = isToday(day);
+              
               return (
-                <TouchableOpacity
-                  key={day}
-                  style={[
-                    styles.dayCell,
-                    styles.dayButton,
-                    isTodayDate ? styles.todayCell : styles.normalDayCell,
-                  ]}
-                  onPress={() => handleDayClick(day)}
-                >
-                  <Text style={[styles.dayNumber, isTodayDate ? styles.todayNumber : styles.normalDayNumber]}>
-                    {day}
-                  </Text>
-                  {hasItems && <View style={styles.dotIndicator} />}
-                </TouchableOpacity>
+                <View key={day} style={styles.dayCell}>
+                  <TouchableOpacity
+                    style={[
+                      styles.dayInner,
+                      isTodayDate ? styles.todayCell : styles.normalDayCell,
+                    ]}
+                    onPress={() => handleDayClick(day)}
+                  >
+                    <Text style={[styles.dayNumber, isTodayDate ? styles.todayNumber : styles.normalDayNumber]}>
+                      {day}
+                    </Text>
+                    {hasItems && <View style={styles.dotIndicator} />}
+                  </TouchableOpacity>
+                </View>
               );
             })}
           </View>
