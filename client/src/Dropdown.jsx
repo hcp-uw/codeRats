@@ -37,7 +37,7 @@ export function ActivityDropdown({label, value, options, onSelect, iconName}) {
       <TouchableOpacity style={styles.dropdown} onPress={toggleDropdown}>
         <View style={styles.left}>
           <Ionicons
-            name={activityIcons[value]}
+            name={activityIcons[value] || "fitness-outline"}
             size={20}
             color="#3E5A3C"
           />

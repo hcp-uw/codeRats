@@ -3,6 +3,7 @@ import { StyleSheet, View, Text, SafeAreaView, ScrollView, TouchableOpacity } fr
 import { ChevronLeft, Home, Calendar, Edit3, BarChart2, ShoppingCart, Award, Flame, Target, TrendingUp } from 'lucide-react-native';
 import { useState } from 'react';
 import Navbar from './Navbar';
+import { supabase } from '../lib/supabase'
 
 const Profile = () => {
   const dailyTasks = [
@@ -18,13 +19,17 @@ const Profile = () => {
     ));
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+  };
+
   return (
     <SafeAreaView style={styles.container}>
         
         {/* Header Navigation */}
         <View style={styles.header}>
-          <TouchableOpacity>
-
+          <TouchableOpacity style={styles.backButton} onPress={handleLogout}>
+            <Text style={styles.headerText}>Logout</Text>
           </TouchableOpacity>
           <View style={styles.currencyContainer}>
             <Award color="white" size={20} />
@@ -121,7 +126,7 @@ const styles = StyleSheet.create({
   scrollContent: { paddingBottom: 100 },
   header: { flexDirection: 'row', justifyContent: 'space-between', padding: 20, alignItems: 'center' },
   backButton: { flexDirection: 'row', alignItems: 'center' },
-  headerText: { color: 'white', fontSize: 18, marginLeft: 5 },
+  headerText: { color: 'white', fontSize: 18, marginLeft: 5},
   currencyContainer: { flexDirection: 'row', alignItems: 'center' },
   currencyText: { color: 'white', marginLeft: 5, fontWeight: 'bold' },
   profileSection: { alignItems: 'center', marginTop: 10 },
