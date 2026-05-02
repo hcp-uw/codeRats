@@ -25,7 +25,6 @@ const Profile = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
         
         {/* Header Navigation */}
         <View style={styles.header}>
@@ -34,7 +33,8 @@ const Profile = () => {
           </TouchableOpacity>
           <View style={styles.currencyContainer}>
             <Award color="white" size={20} />
-            <Text style={styles.currencyText}>15,847</Text> // TODO: backend Import user coins
+            {/* TODO: backend import user coins */}
+            <Text style={styles.currencyText}>15,847</Text> 
           </View>
         </View>
 
@@ -46,20 +46,24 @@ const Profile = () => {
               <Text style={styles.levelText}>Lvl 12</Text>
             </View>
           </View>
-          <Text style={styles.userName}>User's name</Text> // TODO: backend import user's name e.g. Megan
-          <Text style={styles.userTitle}>Fitness Warrior</Text> // TODO: backend username e.g. IhateRunning
+          {/* TODO: backend import user's name e.g. Megan */}
+          <Text style={styles.userName}>User's name</Text> 
+          {/* TODO: backend username e.g. IhateRunning */}
+          <Text style={styles.userTitle}>Username</Text> 
         </View>
 
         {/* Stats Row */}
         <View style={styles.statsRow}>
-          <StatBox icon={<TrendingUp color="white" size={18}/>} label="Day Streak" value="127" /> // TODO: backend Import user Day streak
+          {/* TODO: backend Import user Day streak */ }
+          <StatBox icon={<TrendingUp color="white" size={18}/>} label="Day Streak" value="127" />
           <View style={styles.divider} />
-          <StatBox icon={<Target color="white" size={18}/>} label="Goal Rate" value="89%" /> // TODO: backend
+          <StatBox icon={<Target color="white" size={18}/>} label="Goal Rate" value="89%" />
           <View style={styles.divider} />
-          <StatBox icon={<Award color="white" size={18}/>} label="Achievements" value="24" /> // TODO: backend
+          <StatBox icon={<Award color="white" size={18}/>} label="Achievements" value="24" />
         </View>
 
         {/* Daily Workout Card */}
+        
         <View style={styles.workoutCard}>
           <View style={styles.workoutHeader}>
             <Text style={styles.workoutTitle}>Daily Workout</Text> 
@@ -80,6 +84,7 @@ const Profile = () => {
         </View>
 
         {/* Task List */}
+        <ScrollView contentContainerStyle={styles.scrollContent}>
         {tasks.map((task) => (
         <View key={task.id} style={styles.taskItem}>
           <View style={styles.taskLeft}>
@@ -95,9 +100,10 @@ const Profile = () => {
           </View>
         </View>
         ))}
+        </ScrollView>
       </View>
 
-        </ScrollView>
+        
       <Navbar />
   </SafeAreaView>
   );
