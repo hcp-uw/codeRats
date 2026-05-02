@@ -32,7 +32,7 @@ export async function createGoal({ goal_name, goal_desc = null, end_date = null,
       user_id,
     })
     .select("*") // Return the inserted row
-    .single(); // CHeck that only one row is inserted
+    .single(); // Check that only one row is inserted
 
   if (error) throw new Error(error.message);
   return data;

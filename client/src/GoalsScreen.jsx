@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -12,30 +12,36 @@ import {
   SafeAreaView,
 } from 'react-native';
 import Navbar from './Navbar'; 
+import { useAuth } from './AuthContext';
+import { getGoalsByUser } from './goalBackend';
 
 export default function GoalsScreen({ navigation }) {
+  const { user } = useAuth();
 
-//TODO: replace with Supbase fetch for user goals
-  const [goals, setGoals] = useState([
-    {
-      id: '1',
-      icon: '🏋️',
-      title: "Bench 225 lbs",
-      desc: "Target by June 2025",
-    },
-    {
-      id: '2',
-      icon: '🏃',
-      title: "Sub 3 Hour Marathon",
-      desc: "Train consistently for 6 months",    
-    },
-    {
-      id: '3',
-      icon: '🔥',
-      title: "Workout Everyday",
-      desc: "At least 30 minutes daily",    
-    },
-  ]); 
+  // Try to grab user id
+  const userId = user?.id;
+  
+  const [goals, setGoals] = useState([]);
+  useEffect(() => {
+    if (!userId) return;
+    const fetchGoals = async () => {
+        // get goal data for user
+        const data = await getGoalsByUser(userId);
+
+        // map data to expected fields
+        const mapped = data.map(g => ({
+          id: g.goal_id,
+          title: g.goal_name,
+          desc: g.goal_desc,
+          icon: g.icon ?? '🎯',
+        }));
+        setGoals(mapped);
+    };
+
+    fetchGoals();
+  }, [userId]); // reruns whenever userId changes
+
+
 
   const [goalTitle, setGoalTitle] = useState('');
   const [goalDesc, setGoalDesc] = useState('');
