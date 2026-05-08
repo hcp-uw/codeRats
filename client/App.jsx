@@ -1,5 +1,7 @@
 import { supabase } from './lib/supabase'
 
+import React, { useEffect, useState } from 'react';
+
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View, KeyboardAvoidingView, Platform} from 'react-native';
 
