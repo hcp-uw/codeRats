@@ -16,7 +16,11 @@ import { useAuth } from './AuthContext';
 import { getGoalsByUser, createGoal, updateGoal, deleteGoal } from './goalBackend';
 
 export default function GoalsScreen({ navigation }) {
-  const { user } = useAuth();
+  // Try to grab user id
+  const { user, loading } = useAuth();
+  const userId = user?.id;
+  const [goals, setGoals] = useState([]);
+  
 
   const [goalTitle, setGoalTitle] = useState('');
   const [goalDesc, setGoalDesc] = useState('');
@@ -29,10 +33,7 @@ export default function GoalsScreen({ navigation }) {
   const [selectedGoal, setSelectedGoal] = useState(null);
   const [isediting, setIsEditing] = useState(false);
 
-  // Try to grab user id
-  const userId = user?.id;
-  
-  const [goals, setGoals] = useState([]);
+  // Fetchs current goals from supabase automatically
   useEffect(() => {
     if (!userId) return;
     const fetchGoals = async () => {
@@ -62,6 +63,7 @@ export default function GoalsScreen({ navigation }) {
             goal_desc: goalDesc,
             icon: goalIcon,
         });
+        // Set state with new array copy with goal change
         setGoals(prev =>
             prev.map(g => g.id === selectedGoal.id ? { ...g, title: updated.goal_name, desc: updated.goal_desc, icon: updated.icon } : g)
         );
@@ -72,6 +74,7 @@ export default function GoalsScreen({ navigation }) {
             icon: goalIcon,
             user_id: userId,
         });
+        // Set state with new array copy with new goal
         setGoals(prev => [...prev, {
             id: created.goal_id,
             title: created.goal_name,
@@ -90,7 +93,8 @@ export default function GoalsScreen({ navigation }) {
   const handleDelete = async () => {
       const success = await deleteGoal(selectedGoal.id);
       if (success) {
-          setGoals(prev => prev.filter(g => g.id !== selectedGoal.id));
+        // Set state to array copy minus deleted goal
+        setGoals(prev => prev.filter(g => g.id !== selectedGoal.id));
       }
       setMenuVisible(false);
   };
@@ -99,7 +103,7 @@ export default function GoalsScreen({ navigation }) {
     <SafeAreaView style={styles.container}>
       <ScrollView 
       showsVerticalScrollIndicator={false}
-      contentContainerStyle={{ paddingBottom: 40 }}>
+      contentContainerStyle={{ paddingBottom: 40, paddingHorizontal: 18 }}>
 
         {/* Page Title */}
         <View style={styles.header}>
