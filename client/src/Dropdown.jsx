@@ -12,12 +12,17 @@ import {
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
 import { Ionicons } from "@expo/vector-icons";
+import RunIcon from '../icons/run.svg';
+import CycleIcon from '../icons/biking.svg';
+import WalkIcon from '../icons/walk.svg';
+import WeightsIcon from '../icons/weights.svg';
+import Hourglass from '../icons/hourglass.svg';
 
 const activityIcons = {
-  Run: "footsteps-outline",
-  Cycle: "bicycle-outline",
-  Walk: "walk-outline",
-  Weights: "body-outline",
+  Run: RunIcon,
+  Cycle: CycleIcon,
+  Walk: WalkIcon,
+  Weights: WeightsIcon,
 };
 
 export function ActivityDropdown({label, value, options, onSelect, iconName}) {
@@ -32,15 +37,17 @@ export function ActivityDropdown({label, value, options, onSelect, iconName}) {
     setIsOpen(false);
   };
 
+  const IconComponent = activityIcons[value];
+  const FallbackIcon = activityIcons['Run'];
+
   return (
     <View style={styles.wrapper}>
       <TouchableOpacity style={styles.dropdown} onPress={toggleDropdown}>
         <View style={styles.left}>
-          <Ionicons
-            name={activityIcons[value] || "fitness-outline"}
-            size={20}
-            color="#3E5A3C"
-          />
+          {IconComponent
+            ? <IconComponent width={20} height={20} />
+            : <FallbackIcon width={20} height={20} />
+          }
           <Text style={styles.text}>
             {value || label}
           </Text>
@@ -217,11 +224,7 @@ export function DurationPicker({ value, onChange }) {
         style={styles.field}
         onPress={() => setVisible(true)}
       >
-        <Ionicons
-            name="stopwatch-outline"
-            size={20}
-            color="#3E5A3C"
-        />
+        <Hourglass width={20} height={20}/>
         <Text style={styles.text}>{value}</Text>
       </TouchableOpacity>
 
@@ -297,6 +300,7 @@ export function DistancePicker({ value, onChange }) {
           style={styles.text}
           keyboardType="numeric"
           placeholder="Distance"
+          placeholderTextColor="#5F6A5F"
           value={value}
           onChangeText={onChange}
         />
