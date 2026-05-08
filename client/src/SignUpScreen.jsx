@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Text, View, TouchableOpacity, TextInput, ScrollView, SafeAreaView, Alert } from 'react-native';
 import { SignUpStyles as styles } from './AuthStyles';
 import { supabase } from '../lib/supabase';
+import Head from '../icons/head.svg';
 
 export default function SignUpScreen({ navigation }) {
   const [username, setUsername] = useState('');
@@ -52,7 +53,7 @@ export default function SignUpScreen({ navigation }) {
         </TouchableOpacity>
         <View style={styles.headerContent}>
           <View style={styles.headerIcon}>
-            <Text style={styles.headerIconText}>👤</Text>
+            <Head width={30} height={30}/>
           </View>
           <View>
             <Text style={styles.headerTitle}>Join Momentum</Text>
