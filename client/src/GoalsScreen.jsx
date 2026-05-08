@@ -13,35 +13,10 @@ import {
 } from 'react-native';
 import Navbar from './Navbar'; 
 import { useAuth } from './AuthContext';
-import { getGoalsByUser } from './goalBackend';
+import { getGoalsByUser, createGoal, updateGoal, deleteGoal } from './goalBackend';
 
 export default function GoalsScreen({ navigation }) {
   const { user } = useAuth();
-
-  // Try to grab user id
-  const userId = user?.id;
-  
-  const [goals, setGoals] = useState([]);
-  useEffect(() => {
-    if (!userId) return;
-    const fetchGoals = async () => {
-        // get goal data for user
-        const data = await getGoalsByUser(userId);
-
-        // map data to expected fields
-        const mapped = data.map(g => ({
-          id: g.goal_id,
-          title: g.goal_name,
-          desc: g.goal_desc,
-          icon: g.icon ?? '🎯',
-        }));
-        setGoals(mapped);
-    };
-
-    fetchGoals();
-  }, [userId]); // reruns whenever userId changes
-
-
 
   const [goalTitle, setGoalTitle] = useState('');
   const [goalDesc, setGoalDesc] = useState('');
@@ -54,22 +29,55 @@ export default function GoalsScreen({ navigation }) {
   const [selectedGoal, setSelectedGoal] = useState(null);
   const [isediting, setIsEditing] = useState(false);
 
-  const handleSaveGoal = () => {
+  // Try to grab user id
+  const userId = user?.id;
+  
+  const [goals, setGoals] = useState([]);
+  useEffect(() => {
+    if (!userId) return;
+    const fetchGoals = async () => {
+      // get goal data for user
+      const data = await getGoalsByUser(userId);
 
+      // map data to expected fields
+      const mapped = data.map(g => ({
+        id: g.goal_id,
+        title: g.goal_name,
+        desc: g.goal_desc,
+        icon: g.icon ?? '🎯',
+      }));
+      setGoals(mapped);
+    };
+
+    fetchGoals();
+  }, [userId]); // reruns whenever userId changes
+
+
+  const handleSaveGoal = async () => {
     if (!goalTitle.trim()) return;
 
     if (isediting) {
-      setGoals(prev =>
-        prev.map(g => g.id === selectedGoal.id ? { ...g, title: goalTitle, desc: goalDesc, icon: goalIcon } : g)
-      );
+        const updated = await updateGoal(selectedGoal.id, {
+            goal_name: goalTitle,
+            goal_desc: goalDesc,
+            icon: goalIcon,
+        });
+        setGoals(prev =>
+            prev.map(g => g.id === selectedGoal.id ? { ...g, title: updated.goal_name, desc: updated.goal_desc, icon: updated.icon } : g)
+        );
     } else {
-      const newGoal = {
-        id: Date.now().toString(),
-        title: goalTitle,
-        desc: goalDesc,
-        icon: goalIcon,
-      };
-      setGoals(prev => [...prev, newGoal]);
+        const created = await createGoal({
+            goal_name: goalTitle,
+            goal_desc: goalDesc,
+            icon: goalIcon,
+            user_id: userId,
+        });
+        setGoals(prev => [...prev, {
+            id: created.goal_id,
+            title: created.goal_name,
+            desc: created.goal_desc,
+            icon: created.icon ?? '🔥',
+        }]);
     }
 
     setGoalTitle('');
@@ -79,11 +87,13 @@ export default function GoalsScreen({ navigation }) {
     setIsEditing(false);
   };
 
-  const handleDelete = () => {
-    setGoals(prev => prev.filter(g => g.id !== selectedGoal.id));
-    setMenuVisible(false);
+  const handleDelete = async () => {
+      const success = await deleteGoal(selectedGoal.id);
+      if (success) {
+          setGoals(prev => prev.filter(g => g.id !== selectedGoal.id));
+      }
+      setMenuVisible(false);
   };
-
     
   return (
     <SafeAreaView style={styles.container}>
@@ -221,20 +231,22 @@ export default function GoalsScreen({ navigation }) {
 
             <Text style={styles.modalTitle}>Create Goal</Text>
 
-           {/* TODO: controlled input */}
            <TextInput
            placeholder="Title of Goal"
            placeholderTextColor="#fff"
-           style={styles.input}/>
+           style={styles.input}
+           value={goalTitle}
+           onChangeText={setGoalTitle}/>
 
-           {/* TODO  */}
            <TextInput
            placeholder="Description (how to get there, when, etc.)"
            placeholderTextColor="#fff"
            multiline
-           style={[styles.input, {height:90}]}/>
+           style={[styles.input, {height:90}]}
+           value={goalDesc}
+           onChangeText={setGoalDesc}/>
 
-           {/* TODO: icon picker */}
+           {/* Icon picker */}
             <Text style={{ color:'#fff', marginBottom:6}}>Choose Icon</Text>
 
             <TextInput
@@ -248,8 +260,7 @@ export default function GoalsScreen({ navigation }) {
               autoCapitalize='none'
               />
 
-
-             {/* TODO: insert Goal  */}
+             {/* Insert Goal  */}
             <TouchableOpacity
             style={styles.saveButton}
             onPress={handleSaveGoal}>
