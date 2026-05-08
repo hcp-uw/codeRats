@@ -65,7 +65,8 @@ export default function GoalsScreen({ navigation }) {
         });
         // Set state with new array copy with goal change
         setGoals(prev =>
-            prev.map(g => g.id === selectedGoal.id ? { ...g, title: updated.goal_name, desc: updated.goal_desc, icon: updated.icon } : g)
+            prev.map(g => g.id === selectedGoal.id ?
+                { ...g, title: updated.goal_name, desc: updated.goal_desc, icon: updated.icon } : g)
         );
     } else {
         const created = await createGoal({
