@@ -2,10 +2,6 @@ import React, { useEffect } from 'react';
 import { Text, View, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
 import { WelcomeStyles as styles } from './AuthStyles';
 import { supabase } from '../lib/supabase';
-import Dumbbell from '../icons/Dumbbell.svg';
-import Plant from '../icons/plant.svg';
-import Users from '../icons/users.svg';
-import Track from '../icons/track.svg';
 
 export default function WelcomeScreen({ navigation }) {
    useEffect(() => {
@@ -24,7 +20,7 @@ export default function WelcomeScreen({ navigation }) {
         {/* Logo/Header Section */}
         <View style={styles.headerSection}>
           <View style={styles.logoPlaceholder}>
-            <Dumbbell width={50} height={50} />
+            <Text style={styles.logoText}>🏋️</Text>
           </View>
           <Text style={styles.appTitle}>Momentum</Text>
           <Text style={styles.appSubtitle}>Level Up Your Fitness</Text>
@@ -33,17 +29,17 @@ export default function WelcomeScreen({ navigation }) {
         {/* Feature Section */}
         <View style={styles.featureSection}>
           <FeatureCard
-            icon={<Track width={40} height={40}/>}
+            icon="🎯"
             title="Track"
             description="Track your workouts"
           />
           <FeatureCard
-            icon={<Plant width={40} height={40}/>}
+            icon="🌱"
             title="Grow"
             description="insert some slogan here"
           />
           <FeatureCard
-            icon={<Users width={40} height={40}/>}
+            icon="👥"
             title="Compete"
             description="Compete and rank up"
           />
@@ -73,7 +69,7 @@ export default function WelcomeScreen({ navigation }) {
 function FeatureCard({ icon, title, description }) {
   return (
     <View style={styles.featureCard}>
-      <View style={styles.featureIcon}>{icon}</View>
+      <Text style={styles.featureIcon}>{icon}</Text>
       <Text style={styles.featureTitle}>{title}</Text>
       <Text style={styles.featureDescription}>{description}</Text>
     </View>
