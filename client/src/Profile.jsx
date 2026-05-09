@@ -1,9 +1,11 @@
-import React from 'react';
+//import React from 'react';
 import { StyleSheet, View, Text, SafeAreaView, ScrollView, TouchableOpacity } from 'react-native';
 import { ChevronLeft, Home, Calendar, Edit3, BarChart2, ShoppingCart, Award, Flame, Target, TrendingUp } from 'lucide-react-native';
-import { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Navbar from './Navbar';
-import { supabase } from '../lib/supabase'
+import { supabase } from '../lib/supabase';
+import { getAvatarByUser, createAvatar } from './avatarBackend';
+
 
 const Profile = () => {
   // 1. Generate dynamic dates (Today + next 3 days)
@@ -31,6 +33,9 @@ const Profile = () => {
     { id: 3, title: 'Stretch 15min', reward: 25, completed: false },
   ];
   const [tasks, setTasks] = useState(dailyTasks);
+  const [avatar, setAvatar] = useState(null);
+  const [displayName, setDisplayName] = useState("User");
+  const [loadingAvatar, setLoadingAvatar] = useState(true);
 
   const currentTasks = selectedDate === availableDates[0].full ? tasks : [];
 
@@ -40,9 +45,42 @@ const Profile = () => {
     ));
   };
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-  };
+  useEffect(() => {
+    async function loadAvatarData() {
+      try {
+        const {data, error} =  await supabase.auth.getSession();
+
+        if (error) {
+          throw error;
+        }
+
+        const user = data?.session?.user;
+
+        if (!user) {
+          setLoadingAvatar(false);
+          return;
+        }
+
+        let avatarRow = await getAvatarByUser(user.id);
+
+        if (!avatarRow) {
+          avatarRow = await createAvatar({user_id: user.id});
+        }
+
+        setAvatar(avatarRow);
+
+        if (user.email) {
+          setDisplayName(user.email.split("@")[0]);
+        }
+      } catch (err) {
+          console.error("Error loading avater", err.message);
+      } finally {
+          setLoadingAvatar(false);
+      }
+    }
+    loadAvatarData();
+  }, []);
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -54,8 +92,9 @@ const Profile = () => {
           </TouchableOpacity>
           <View style={styles.currencyContainer}>
             <Award color="white" size={20} />
-            {/* TODO: backend import user coins */}
-            <Text style={styles.currencyText}>15,847</Text> 
+            <Text style={styles.currencyText}>
+              {loadingAvatar ? "..." : (avatar?.coins ?? 0)}
+              </Text> // TODO: backend Import user coins
           </View>
         </View>
 
@@ -64,13 +103,13 @@ const Profile = () => {
           <View style={styles.avatarContainer}>
             <View style={styles.avatarCircle} />
             <View style={styles.levelBadge}>
-              <Text style={styles.levelText}>Lvl 12</Text>
+              <Text style={styles.levelText}>
+                Lvl {loadingAvatar ? "..." : (avatar?.level ?? 1)}
+                </Text> // TODO: backend level
             </View>
           </View>
-          {/* TODO: backend import user's name e.g. Megan */}
-          <Text style={styles.userName}>User's name</Text> 
-          {/* TODO: backend username e.g. IhateRunning */}
-          <Text style={styles.userTitle}>Username</Text> 
+          <Text style={styles.userName}>{displayName}</Text> // TODO: backend import user's name e.g. Megan
+          <Text style={styles.userTitle}>Fitness Warrior</Text> // TODO: backend username e.g. IhateRunning
         </View>
 
         {/* Stats Row */}
