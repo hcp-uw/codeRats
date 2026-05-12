@@ -84,7 +84,7 @@ export async function getGoalsByUser(user_id) {
     .from(TABLE)
     .select("*")
     .eq("user_id", user_id)
-    .order("created_at", { ascending: true });
+    .order('end_date', { ascending: false, nullsFirst: false })
 
   if (error) throw new Error(error.message);
   return data ?? [];
