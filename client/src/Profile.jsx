@@ -8,6 +8,25 @@ import { getAvatarByUser, createAvatar } from './avatarBackend';
 
 
 const Profile = () => {
+  // 1. Generate dynamic dates (Today + next 3 days)
+  const generateDates = () => {
+    const dates = [];
+    for (let i = 0; i < 4; i++) {
+      const date = new Date();
+      date.setDate(date.getDate() + i);
+      dates.push({
+        full: date.toDateString(), // Use this as a unique ID/Key
+        day: date.toLocaleDateString('en-US', { weekday: 'short' }),
+        num: date.getDate(),
+      });
+    }
+    return dates;
+  };
+
+  const [availableDates] = useState(generateDates());
+  const [selectedDate, setSelectedDate] = useState(availableDates[0].full);
+
+
   const dailyTasks = [
     { id: 1, title: '5km run', reward: 80, completed: false },
     { id: 2, title: '30 burpees', reward: 40, completed: false },
@@ -17,6 +36,8 @@ const Profile = () => {
   const [avatar, setAvatar] = useState(null);
   const [displayName, setDisplayName] = useState("User");
   const [loadingAvatar, setLoadingAvatar] = useState(true);
+
+  const currentTasks = selectedDate === availableDates[0].full ? tasks : [];
 
   const toggleTask = (id) => {
     setTasks(tasks.map(task =>
@@ -63,13 +84,11 @@ const Profile = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
         
         {/* Header Navigation */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton}>
-            <ChevronLeft color="white" size={28} />
-            <Text style={styles.headerText}>Action</Text>
+          <TouchableOpacity style={styles.backButton} onPress={handleLogout}>
+            <Text style={styles.headerText}>Logout</Text>
           </TouchableOpacity>
           <View style={styles.currencyContainer}>
             <Award color="white" size={20} />
@@ -95,56 +114,82 @@ const Profile = () => {
 
         {/* Stats Row */}
         <View style={styles.statsRow}>
-          <StatBox icon={<TrendingUp color="white" size={18}/>} label="Day Streak" value="127" /> // TODO: backend Import user Day streak
+          {/* TODO: backend Import user Day streak */ }
+          <StatBox icon={<TrendingUp color="white" size={18}/>} label="Day Streak" value="127" />
           <View style={styles.divider} />
-          <StatBox icon={<Target color="white" size={18}/>} label="Goal Rate" value="89%" /> // TODO: backend
+          <StatBox icon={<Target color="white" size={18}/>} label="Goal Rate" value="89%" />
           <View style={styles.divider} />
-          <StatBox icon={<Award color="white" size={18}/>} label="Achievements" value="24" /> // TODO: backend
+          <StatBox icon={<Award color="white" size={18}/>} label="Achievements" value="24" />
         </View>
 
         {/* Daily Workout Card */}
+        
         <View style={styles.workoutCard}>
           <View style={styles.workoutHeader}>
             <Text style={styles.workoutTitle}>Daily Workout</Text> 
             <View style={styles.completionStatus}>
               <Flame color="#D9A066" size={16} />
-              <Text style={styles.completionText}> 0/3 completed</Text>
+              <Text style={styles.completionText}> 
+                {currentTasks.filter(t => t.completed).length}/{currentTasks.length} completed
+              </Text>
             </View>
           </View>
 
         {/* Date Picker Ribbon */}
-        <View style={styles.dateRibbon}>
-          {['Tue 21', 'Wed 22', 'Thu 23', 'Fri 24'].map((date, index) => (
-            <View key={index} style={[styles.dateItem, index === 0 && styles.activeDateItem]}>
-              <Text style={[styles.dateText, index === 0 && styles.activeDateText]}>{date.split(' ')[0]}</Text>
-              <Text style={[styles.dateNumber, index === 0 && styles.activeDateText]}>{date.split(' ')[1]}</Text>
-            </View>
-          ))}
-        </View>
+        <View>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false} 
+            contentContainerStyle={styles.dateRibbon}
+          >
+            {availableDates.map((dateObj) => {
+              const isActive = selectedDate === dateObj.full;
+              return (
+                <TouchableOpacity 
+                  key={dateObj.full} 
+                  onPress={() => setSelectedDate(dateObj.full)}
+                  style={[styles.dateItem, isActive && styles.activeDateItem]}
+                >
+                  <Text style={[styles.dateText, isActive && styles.activeDateText]}>{dateObj.day}</Text>
+                  <Text style={[styles.dateNumber, isActive && styles.activeDateText]}>{dateObj.num}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+          </View>
 
         {/* Task List */}
-        {tasks.map((task) => (
-        <View key={task.id} style={styles.taskItem}>
-          <View style={styles.taskLeft}>
-            <TouchableOpacity 
-              style={[styles.checkbox, task.completed && { backgroundColor: '#D9A066', borderColor: '#D9A066' }]} 
-              onPress={() => toggleTask(task.id)} 
-            />
-            <Text style={[styles.taskTitle, task.completed && { color: '#A1A1A1', textDecorationLine: 'line-through' }]}>{task.title}</Text>
-          </View>
-          <View style={styles.taskReward}>
-            <Award color="#D9A066" size={16} />
-            <Text style={styles.rewardText}>+{task.reward}</Text>
-          </View>
-        </View>
-        ))}
-      </View>
-
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          {currentTasks.length > 0 ? (
+            currentTasks.map((task) => (
+              <View key={task.id} style={styles.taskItem}>
+                <View style={styles.taskLeft}>
+                  <TouchableOpacity 
+                    style={[styles.checkbox, task.completed && { backgroundColor: '#D9A066', borderColor: '#D9A066' }]} 
+                    onPress={() => toggleTask(task.id)} 
+                  />
+                  <Text style={[styles.taskTitle, task.completed && { color: '#A1A1A1', textDecorationLine: 'line-through' }]}>
+                    {task.title}
+                  </Text>
+                </View>
+                <View style={styles.taskReward}>
+                  <Award color="#D9A066" size={16} />
+                  <Text style={styles.rewardText}>+{task.reward}</Text>
+                </View>
+              </View>
+            ))
+          ) : (
+            <View style={{ alignItems: 'center', marginTop: 40 }}>
+              <Text style={{ color: '#A1A1A1' }}>No workouts scheduled for this day.</Text>
+            </View>
+          )}
         </ScrollView>
+      </View>        
       <Navbar />
   </SafeAreaView>
   );
 };
+
 
 // Reusable Components
 const StatBox = ({ icon, label, value }) => (
@@ -163,7 +208,7 @@ const styles = StyleSheet.create({
   scrollContent: { paddingBottom: 100 },
   header: { flexDirection: 'row', justifyContent: 'space-between', padding: 20, alignItems: 'center' },
   backButton: { flexDirection: 'row', alignItems: 'center' },
-  headerText: { color: 'white', fontSize: 18, marginLeft: 5 },
+  headerText: { color: 'white', fontSize: 18, marginLeft: 5},
   currencyContainer: { flexDirection: 'row', alignItems: 'center' },
   currencyText: { color: 'white', marginLeft: 5, fontWeight: 'bold' },
   profileSection: { alignItems: 'center', marginTop: 10 },
@@ -184,12 +229,49 @@ const styles = StyleSheet.create({
   workoutTitle: { color: '#E0E0E0', fontSize: 18, fontWeight: '600' },
   completionStatus: { flexDirection: 'row', alignItems: 'center' },
   completionText: { color: '#A1A1A1', fontSize: 14 },
-  dateRibbon: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 25 },
-  dateItem: { backgroundColor: '#F2F2F2', padding: 15, borderRadius: 15, alignItems: 'center', width: '22%' },
-  activeDateItem: { backgroundColor: '#D9A066' },
-  dateText: { color: '#888', fontSize: 12 },
-  dateNumber: { color: '#444', fontSize: 18, fontWeight: 'bold' },
-  activeDateText: { color: 'white' },
+  dateRibbon: { 
+    flexDirection: 'row', 
+    paddingHorizontal: 25, // Re-aligns the first item with your content padding
+    gap: 15, // Creates consistent spacing between items
+  },
+  dateItem: { 
+    backgroundColor: '#F2F2F2', 
+    paddingVertical: 12,
+    paddingHorizontal: 20, // Wider horizontal padding for a "pill" or "card" look
+    borderRadius: 18, 
+    alignItems: 'center', 
+    justifyContent: 'center',
+    minWidth: 75, // Ensures the days have a substantial presence
+    // Optional: add a subtle shadow for depth
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  datePickerContainer: {
+    marginBottom: 20,
+    marginHorizontal: -25, // This pulls the scroll area to the edges of the screen
+  },
+  activeDateItem: { 
+    backgroundColor: '#D9A066',
+    elevation: 4,
+  },
+  dateText: { 
+    color: '#888', 
+    fontSize: 13, 
+    fontWeight: '500',
+    marginBottom: 2,
+    textTransform: 'uppercase'
+  },
+  dateNumber: { 
+    color: '#444', 
+    fontSize: 20, 
+    fontWeight: 'bold' 
+  },
+  activeDateText: { 
+    color: 'white' 
+  },
   taskItem: { backgroundColor: '#F9F9F4', padding: 18, borderRadius: 15, flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
   taskLeft: { flexDirection: 'row', alignItems: 'center' },
   checkbox: { width: 20, height: 20, borderRadius: 5, borderWidth: 1, borderColor: '#D9A066', marginRight: 15 },
