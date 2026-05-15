@@ -1,11 +1,12 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  ScrollView
+  ScrollView,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import {useNavigation} from '@react-navigation/native';
@@ -16,6 +17,8 @@ import {
   DurationPicker,
   DistancePicker
 } from "./Dropdown";
+import { supabase } from "../lib/supabase";
+import { createTaskFromWorkoutForm } from "./taskBackend";
 
 export default function WorkoutScreen({ navigation }) {
   const [title, setTitle] = useState("");
@@ -25,22 +28,74 @@ export default function WorkoutScreen({ navigation }) {
   const [time, setTime] = useState(new Date());
   const [duration, setDuration] = useState("00:00:00");
   const [distance, setDistance] = useState("");
+  const [muscleGroups, setMuscleGroups] = useState("");
+  const [exercise, setExercise] = useState("");
+  const [weight, setWeight] = useState("");
+  const [setReps, setSetReps] = useState("");
 
-  const activityOptions = ["Run", "Walk", "Cycle", "Weights"]
+  const isWeights = activity === "Weights";
 
-  const handleSaveWorkout = () => {
-    const workout = {
-      title,
-      description,
-      activity,
-      date,
-      time,
-      duration,
-      distance,
-    };
+  const activityOptions = ["Run", "Walk", "Cycle", "Weights"];
 
-    //TODO: backend - this function is supposed to save the inputted workout data to our databases. 
-    console.log("Workout saved:", workout);
+  const activityTypeMap = {
+    Run: "run",
+    Walk: "walk",
+    Cycle: "cycle",
+    Weights: "weight_lift",
+  };
+
+  const handleSaveWorkout = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      Alert.alert("Error", "You must be logged in to save a workout");
+      return;
+    }
+
+    const dateStr = date.toISOString().split("T")[0];
+    const timeStr = time.toTimeString().slice(0, 5);
+    const [hh, mm, ss] = duration.split(":").map(Number);
+    const durationMinutes = hh * 60 + mm + (ss || 0) / 60;
+
+    try {
+      // Save the workout entry row
+      await createTaskFromWorkoutForm({
+        title,
+        description,
+        activity_type: activityTypeMap[activity] ?? activity.toLowerCase(),
+        date: dateStr,
+        time: timeStr,
+        duration: durationMinutes,
+        distance: !isWeights && distance ? Number(distance) : null,
+        muscle_groups: isWeights && muscleGroups ? muscleGroups : null,
+        exercise: isWeights && exercise ? exercise : null,
+        weight: isWeights && weight ? Number(weight) : null,
+        set_reps: isWeights && setReps ? setReps : null,
+        user_id: user.id,
+      });
+
+      // Fetch curr coin balance and add 10 points
+      const { data: avatarData } = await supabase
+        .from('avatar')
+        .select('coins')
+        .eq('user_id', user.id)
+        .single();
+
+      // Fallback to 0 if the user doesn't have an avatar record initialization yet
+      const currentCoins = avatarData ? avatarData.coins : 0; 
+      const updatedCoins = currentCoins + 10;
+
+      // Write the newly updated balance back to Supabase
+      await supabase
+        .from('avatar')
+        .update({ coins: updatedCoins })
+        .eq('user_id', user.id);
+
+
+      Alert.alert("Success", "Workout saved! You've earned 10 coins");
+      navigation.goBack();
+    } catch (err) {
+      Alert.alert("Error", err.message);
+    }
   };
 
   return (
@@ -99,11 +154,48 @@ export default function WorkoutScreen({ navigation }) {
           onChange={setDuration}
         />
 
-        {/* Distance */}
-        <DistancePicker
-          value={distance}
-          onChange={setDistance}
-        />
+        {/* Distance — only for cardio activities */}
+        {!isWeights && (
+          <DistancePicker
+            value={distance}
+            onChange={setDistance}
+          />
+        )}
+
+        {/* Weights-specific fields */}
+        {isWeights && (
+          <>
+            <TextInput
+              style={styles.input}
+              placeholder="Muscle groups (e.g. chest, back)"
+              placeholderTextColor="#5F6A5F"
+              value={muscleGroups}
+              onChangeText={setMuscleGroups}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Exercise (e.g. bench press)"
+              placeholderTextColor="#5F6A5F"
+              value={exercise}
+              onChangeText={setExercise}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Weight (lbs)"
+              placeholderTextColor="#5F6A5F"
+              keyboardType="numeric"
+              value={weight}
+              onChangeText={setWeight}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Sets x Reps (e.g. 3x10)"
+              placeholderTextColor="#5F6A5F"
+              value={setReps}
+              onChangeText={setSetReps}
+            />
+          </>
+        )}
 
       </ScrollView>
 

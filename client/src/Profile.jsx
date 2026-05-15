@@ -3,6 +3,7 @@ import { StyleSheet, View, Text, SafeAreaView, ScrollView, TouchableOpacity } fr
 import { ChevronLeft, Home, Calendar, Edit3, BarChart2, ShoppingCart, Award, Flame, Target, TrendingUp } from 'lucide-react-native';
 import Navbar from './Navbar';
 import { supabase } from '../lib/supabase'
+import { useIsFocused } from '@react-navigation/native';
 
 const Profile = () => {
   // Generate the upcoming dates for the scroll feature
@@ -58,6 +59,7 @@ const Profile = () => {
         setUserId(session.user.id);
         fetchUserProfile(session.user.id);
         calculateCurrentStreak(session.user.id);
+        fetchLiveCoins(session.user.id);
       }
     };
     getSession();
@@ -196,6 +198,33 @@ const Profile = () => {
     }
   };
 
+  // Fetch Coins
+  const fetchLiveCoins = async (uid) => {
+    try {
+      const { data, error } = await supabase
+        .from('avatar')
+        .select('coins')
+        .eq('user_id', uid)
+        .single();
+
+      if (data) {
+        // Formats numbers with commas automatically (e.g., 15847 becomes "15,847")
+        setCoins(data.coins.toLocaleString()); 
+      }
+    } catch (err) {
+      console.error("Error pulling live balance details:", err.message);
+    }
+  };
+
+  const isFocused = useIsFocused();
+
+  useEffect(() => {
+    if (isFocused && userId) {
+      fetchLiveCoins(userId);
+      calculateCurrentStreak(userId);
+    }
+  }, [isFocused, userId]);
+
   return (
     <SafeAreaView style={styles.container}>
         
@@ -206,8 +235,7 @@ const Profile = () => {
           </TouchableOpacity>
           <View style={styles.currencyContainer}>
             <Award color="white" size={20} />
-            {/* TODO: backend import user coins */}
-            <Text style={styles.currencyText}>15,847</Text> 
+            <Text style={styles.currencyText}>{coins}</Text> 
           </View>
         </View>
 
