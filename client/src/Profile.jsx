@@ -9,7 +9,7 @@ const Profile = () => {
   // 1. Generate dynamic dates (Today + next 3 days)
   const generateDates = () => {
     const dates = [];
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 100; i++) {
       const date = new Date();
       date.setDate(date.getDate() + i);
       dates.push({
