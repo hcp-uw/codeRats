@@ -1,12 +1,11 @@
-import React from 'react';
+import { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, SafeAreaView, ScrollView, TouchableOpacity } from 'react-native';
 import { ChevronLeft, Home, Calendar, Edit3, BarChart2, ShoppingCart, Award, Flame, Target, TrendingUp } from 'lucide-react-native';
-import { useState } from 'react';
 import Navbar from './Navbar';
 import { supabase } from '../lib/supabase'
 
 const Profile = () => {
-  // 1. Generate dynamic dates (Today + next 3 days)
+  // Generate the upcoming dates for the scroll feature
   const generateDates = () => {
     const dates = [];
     for (let i = 0; i < 100; i++) {
@@ -25,12 +24,19 @@ const Profile = () => {
   const [selectedDate, setSelectedDate] = useState(availableDates[0].full);
 
 
+  // Dynamic State Variables
+  const [userId, setUserId] = useState(null);
+  const [streak, setStreak] = useState(0);
+  const [coins, setCoins] = useState("15,847"); // Fallback default or pulled from avatar table
+  const [userProfile, setUserProfile] = useState({ name: 'User\'s name', username: 'Username' });
+  const [tasks, setTasks] = useState([]);
+
+
   const dailyTasks = [
     { id: 1, title: '5km run', reward: 80, completed: false },
     { id: 2, title: '30 burpees', reward: 40, completed: false },
     { id: 3, title: 'Stretch 15min', reward: 25, completed: false },
   ];
-  const [tasks, setTasks] = useState(dailyTasks);
 
   const currentTasks = selectedDate === availableDates[0].full ? tasks : [];
 
@@ -42,6 +48,152 @@ const Profile = () => {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+  };
+
+  // Fetch session on load
+  useEffect(() => {
+    const getSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setUserId(session.user.id);
+        fetchUserProfile(session.user.id);
+        calculateCurrentStreak(session.user.id);
+      }
+    };
+    getSession();
+  }, []);
+
+  // Fetch tasks whenever the user changes the viewed date
+  useEffect(() => {
+    if (userId) {
+      fetchTasksForDate(userId, selectedDate);
+    }
+  }, [selectedDate, userId]);
+
+
+  // Fetch PRofile Details
+  const fetchUserProfile = async (uid) => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('username')
+      .eq('id', uid)
+      .single();
+    
+    if (data) {
+      setUserProfile({ name: data.username, username: `@${data.username}` });
+    }
+  };
+
+  // Check if rows exist for that particular date in databse
+  const fetchTasksForDate = async (uid, dateString) => {
+    const targetDate = new Date(dateString).toISOString().split('T')[0]; // YYYY-MM-DD
+    
+    const { data } = await supabase
+      .from('task')
+      .select('*')
+      .eq('user_id', uid)
+      .gte('start_time', `${targetDate}T00:00:00.000Z`)
+      .lte('start_time', `${targetDate}T23:59:59.999Z`);
+
+    if (data) {
+      const mappedTasks = data.map(t => ({
+        id: t.task_id,
+        title: t.task_name,
+        // Since row presence = done, these default to completed
+        completed: true 
+      }));
+      setTasks(mappedTasks);
+    }
+  };
+
+  // Calculate Streak
+    // Do this by pulling user's task history and walk backwards day-by-day
+    // to compute streak value dynamically
+    // TODO - Later change this to just be a value in the schema 
+  const calculateCurrentStreak = async (uid) => {
+    // Fetch start_times for tasks over the last month (or adjust range as needed)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const { data, error } = await supabase
+      .from('task')
+      .select('start_time')
+      .eq('user_id', uid)
+      .gte('start_time', thirtyDaysAgo.toISOString())
+      .order('start_time', { ascending: false });
+
+    if (error || !data) return;
+
+    // Extract unique calendar dates (YYYY-MM-DD) that have recorded tasks
+    const completedDates = new Set(
+      data.map(t => new Date(t.start_time).toISOString().split('T')[0])
+    );
+
+    let currentStreak = 0;
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+    // Determine our starting baseline date
+    let checkDate = new Date();
+    
+    if (completedDates.has(todayStr)) {
+      // If completed today, start counting backward from today
+      checkDate = today;
+    } else if (completedDates.has(yesterdayStr)) {
+      // If missed today but completed yesterday, streak is still alive starting yesterday
+      checkDate = yesterday;
+    } else {
+      // Missed both today and yesterday? Streak is broken.
+      setStreak(0);
+      return;
+    }
+
+    // Step backward day-by-day until a gap is hit
+    while (true) {
+      const checkDateStr = checkDate.toISOString().split('T')[0];
+      if (completedDates.has(checkDateStr)) {
+        currentStreak++;
+        checkDate.setDate(checkDate.getDate() - 1); // Move 1 day back
+      } else {
+        break; // Chain broken
+      }
+    }
+
+    setStreak(currentStreak);
+  };
+
+
+  // Check with Seorim's version --> Recording New Task Completion
+  const logCompletedTask = async (taskName, activityType = 'running', distance = 5.0) => {
+    if (!userId) return;
+
+    const now = new Date().toISOString();
+
+    const { data, error } = await supabase
+      .from('task')
+      .insert([
+        {
+          user_id: userId,
+          task_name: taskName,
+          start_time: now,
+          activity_type: activityType,
+          distance: distance,
+          // Add default fields or mappings required by your database schema constraints
+        }
+      ])
+      .select();
+
+    if (!error) {
+      // Refresh the streak computation and the current list layout
+      calculateCurrentStreak(userId);
+      fetchTasksForDate(userId, selectedDate);
+    } else {
+      console.error("Error saving task:", error.message);
+    }
   };
 
   return (
@@ -76,7 +228,7 @@ const Profile = () => {
         {/* Stats Row */}
         <View style={styles.statsRow}>
           {/* TODO: backend Import user Day streak */ }
-          <StatBox icon={<TrendingUp color="white" size={18}/>} label="Day Streak" value="127" />
+          <StatBox icon={<TrendingUp color="white" size={18}/>} label="Day Streak" value={streak} />
           <View style={styles.divider} />
           <StatBox icon={<Target color="white" size={18}/>} label="Goal Rate" value="89%" />
           <View style={styles.divider} />
