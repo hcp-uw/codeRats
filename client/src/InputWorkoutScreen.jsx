@@ -57,7 +57,6 @@ export default function WorkoutScreen({ navigation }) {
     const durationMinutes = hh * 60 + mm + (ss || 0) / 60;
 
     try {
-      // Save the workout entry row
       await createTaskFromWorkoutForm({
         title,
         description,
@@ -73,25 +72,37 @@ export default function WorkoutScreen({ navigation }) {
         user_id: user.id,
       });
 
-      // Fetch curr coin balance and add 10 points
-      const { data: avatarData } = await supabase
+      // Fetch current coin balance, then add +10 points
+      const { data: avatarData, error: fetchError } = await supabase
         .from('avatar')
         .select('coins')
         .eq('user_id', user.id)
         .single();
+      
+      if (fetchError) {
+        console.log("Supabase Fetch Error:", fetchError.message);
+      }
 
       // Fallback to 0 if the user doesn't have an avatar record initialization yet
       const currentCoins = avatarData ? avatarData.coins : 0; 
       const updatedCoins = currentCoins + 10;
 
       // Write the newly updated balance back to Supabase
-      await supabase
+      const { error: upsertError } = await supabase
         .from('avatar')
-        .update({ coins: updatedCoins })
-        .eq('user_id', user.id);
+        .upsert({
+          user_id: user.id,       // Matches your foreign key
+          coins: updatedCoins,    // Sets the new total
+          level: avatarData ? avatarData.level : 1, // Keeps old level or defaults to 1
+          health: avatarData ? avatarData.health : 100,
+          strength: avatarData ? avatarData.strength : 10
+        }, { onConflict: 'user_id' }); // Tells Supabase to overwrite if user_id matches
 
+      if (upsertError) {
+        console.error("Upsert failed:", upsertError.message);
+      }
 
-      Alert.alert("Success", "Workout saved! You've earned 10 coins");
+      Alert.alert("Success", "Workout saved!");
       navigation.goBack();
     } catch (err) {
       Alert.alert("Error", err.message);

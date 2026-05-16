@@ -47,7 +47,7 @@ export async function createTask({
   muscle_groups = null,
   exercise = null,
   weight = null,
-  sets_reps = null,
+  set_reps = null,
   user_id,
 }) {
   assertNonEmptyString(task_name, "task_name");
@@ -76,7 +76,7 @@ export async function createTask({
     row.muscle_groups = muscle_groups ?? null;
     row.exercise = exercise ?? null;
     row.weight = weight !== null ? assertFiniteNumber(weight, "weight") : null;
-    row.sets_reps = sets_reps ?? null;
+    row.set_reps = set_reps ?? null;
   }
 
   const { data, error } = await supabase
@@ -128,7 +128,7 @@ export async function updateTask(task_id, patch) {
   if (patch.weight !== undefined) {
     updateObj.weight = patch.weight !== null ? assertFiniteNumber(patch.weight, "weight") : null;
   }
-  if (patch.sets_reps !== undefined) updateObj.sets_reps = patch.sets_reps;
+  if (patch.set_reps !== undefined) updateObj.set_reps = patch.set_reps;
 
   const { data, error } = await supabase
     .from(TABLE)
@@ -164,7 +164,7 @@ export async function createTaskFromWorkoutForm({
   muscle_groups,
   exercise,
   weight,
-  sets_reps,
+  set_reps,
   user_id,
 }) {
   const start_time = combineDateTimeToISO(date, time);
@@ -178,7 +178,7 @@ export async function createTaskFromWorkoutForm({
     muscle_groups,
     exercise,
     weight,
-    sets_reps,
+    set_reps,
     user_id,
   });
 }

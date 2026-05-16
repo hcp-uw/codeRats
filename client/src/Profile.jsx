@@ -28,16 +28,12 @@ const Profile = () => {
   // Dynamic State Variables
   const [userId, setUserId] = useState(null);
   const [streak, setStreak] = useState(0);
-  const [coins, setCoins] = useState("15,847"); // Fallback default or pulled from avatar table
-  const [userProfile, setUserProfile] = useState({ name: 'User\'s name', username: 'Username' });
+  const [coins, setCoins] = useState("0");
+  const [userProfile, setUserProfile] = useState({ name: 'Loading...', username: '@loading' });
   const [tasks, setTasks] = useState([]);
 
+  const isFocused = useIsFocused();
 
-  const dailyTasks = [
-    { id: 1, title: '5km run', reward: 80, completed: false },
-    { id: 2, title: '30 burpees', reward: 40, completed: false },
-    { id: 3, title: 'Stretch 15min', reward: 25, completed: false },
-  ];
 
   const currentTasks = selectedDate === availableDates[0].full ? tasks : [];
 
@@ -53,17 +49,18 @@ const Profile = () => {
 
   // Fetch session on load
   useEffect(() => {
-    const getSession = async () => {
+    const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         setUserId(session.user.id);
         fetchUserProfile(session.user.id);
+        calculateDynamicCoins(session.user.id);
         calculateCurrentStreak(session.user.id);
-        fetchLiveCoins(session.user.id);
+        fetchTasksForDate(session.user.id, selectedDate);
       }
     };
-    getSession();
-  }, []);
+    checkSession();
+  }, [isFocused]);
 
   // Fetch tasks whenever the user changes the viewed date
   useEffect(() => {
@@ -216,7 +213,6 @@ const Profile = () => {
     }
   };
 
-  const isFocused = useIsFocused();
 
   useEffect(() => {
     if (isFocused && userId) {
