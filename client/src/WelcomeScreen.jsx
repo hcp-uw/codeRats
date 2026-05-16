@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Text, View, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
+import { Text, View, TouchableOpacity, ScrollView, Image, SafeAreaView } from 'react-native';
 import { WelcomeStyles as styles } from './AuthStyles';
 import { supabase } from '../lib/supabase';
 import Dumbbell from '../icons/Dumbbell.svg';
@@ -24,26 +24,26 @@ export default function WelcomeScreen({ navigation }) {
         {/* Logo/Header Section */}
         <View style={styles.headerSection}>
           <View style={styles.logoPlaceholder}>
-            <Dumbbell width={50} height={50} />
+            <Image source={require('../icons/coderat.png')} style={styles.coderat} />
           </View>
-          <Text style={styles.appTitle}>Momentum</Text>
+          <Text style={styles.appTitle}>momentum</Text>
           <Text style={styles.appSubtitle}>Level Up Your Fitness</Text>
         </View>
 
         {/* Feature Section */}
         <View style={styles.featureSection}>
           <FeatureCard
-            icon={<Track width={40} height={40}/>}
+            icon={<Track width={30} height={30}/>}
             title="Track"
             description="Track your workouts"
           />
           <FeatureCard
-            icon={<Plant width={40} height={40}/>}
+            icon={<Plant width={30} height={30}/>}
             title="Grow"
             description="insert some slogan here"
           />
           <FeatureCard
-            icon={<Users width={40} height={40}/>}
+            icon={<Users width={30} height={30}/>}
             title="Compete"
             description="Compete and rank up"
           />
