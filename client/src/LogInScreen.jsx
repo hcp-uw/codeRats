@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Text, View, TouchableOpacity, TextInput, ScrollView, SafeAreaView, Alert } from 'react-native';
 import { LogInStyles as styles } from './AuthStyles';
 import { supabase } from '../lib/supabase';
-import Bicep from '../icons/bicep.svg'
+import Head from '../icons/head.svg';
 
 export default function LogInScreen({ navigation }) {
   const [email, setEmail] = useState('');
@@ -32,7 +32,7 @@ export default function LogInScreen({ navigation }) {
         </TouchableOpacity>
         <View style={styles.headerContent}>
           <View style={styles.headerIcon}>
-            <Bicep width={25} height={25} />
+            <Head width={30} height={30}/>
           </View>
           <View>
             <Text style={styles.headerTitle}>Welcome Back</Text>
