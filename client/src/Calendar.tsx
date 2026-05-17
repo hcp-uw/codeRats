@@ -4,6 +4,7 @@ import { Modal, View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput,
 import Navbar from './Navbar';
 import { useAuth } from './AuthContext';
 import { getTasksByUser, deleteTask, updateTask } from './taskBackend';
+import { useIsFocused } from "@react-navigation/native";
 
 interface ScheduleItem {
   id: string;
@@ -329,8 +330,18 @@ export default function MonthlyCalendar() {
   const [editWeight, setEditWeight] = useState('');
   const [editSetReps, setEditSetReps] = useState('');
 
+  const isFocused = useIsFocused();
+  const [loading, setLoading] = useState(false);
+
+  
+  
+  /*
   useEffect(() => {
     if (!user) return;
+
+    setLoading(true);
+
+
     getTasksByUser(user.id).then((tasks: any[]) => {
       const grouped: DaySchedule = {};
       for (const task of tasks) {
@@ -356,7 +367,56 @@ export default function MonthlyCalendar() {
       }
       setSchedule(grouped);
     }).catch(console.error);
-  }, [user]);
+  }, [user]);*/
+
+  useEffect(() => {
+    const loadTasks = async () => {
+      if (!user) return;
+      setLoading(true);
+      try {
+        const tasks = await getTasksByUser(user.id);
+        
+        // Formats your tasks into the day groups calendar structure
+        const newSchedule: DaySchedule = {};
+        tasks.forEach((task) => {
+          if (task.start_time) {
+            // Safe split to extract local date format 'YYYY-MM-DD' cleanly
+            const dateKey = task.start_time.split("T")[0]; 
+            if (!newSchedule[dateKey]) {
+              newSchedule[dateKey] = [];
+            }
+            newSchedule[dateKey].push({
+              id: String(task.task_id),
+              title: task.task_name,
+              category: "workout",
+              points: Math.round(task.duration ?? 0),
+              completed: false,
+              description: task.description ?? null,
+              activity_type: task.activity_type ?? null,
+              duration: task.duration ?? null,
+              start_time: task.start_time ?? null,
+              distance: task.distance ?? null,
+              muscle_groups: task.muscle_groups ?? null,
+              exercise: task.exercise ?? null,
+              weight: task.weight ?? null,
+              set_reps: task.set_reps ?? null,
+            });
+          }
+        });
+        
+        setSchedule(newSchedule);
+      } catch (err) {
+        console.error("Error loading calendar data:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Trigger only if the screen is fully visible to the user
+    if (isFocused) {
+      loadTasks();
+    }
+  }, [user, isFocused]);
 
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();

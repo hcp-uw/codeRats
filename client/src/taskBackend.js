@@ -27,14 +27,7 @@ function combineDateTimeToISO(date, time) {
   if (!date) throw new Error("date is required if time is provided");
   if (!time) throw new Error("time is required if date is provided");
 
-  const [yyyy, mm, dd] = date.split("-").map(Number);
-  const [hh, min] = time.split(":").map(Number);
-
-  const local = new Date(yyyy, mm - 1, dd, hh, min, 0);
-  if (Number.isNaN(local.getTime())) {
-    throw new Error("Invalid date/time format. Use YYYY-MM-DD and HH:MM");
-  }
-  return local.toISOString();
+  return `${date}T${time}:00.000`;
 }
 
 export async function createTask({
@@ -167,20 +160,36 @@ export async function createTaskFromWorkoutForm({
   set_reps,
   user_id,
 }) {
-  const start_time = combineDateTimeToISO(date, time);
-  return createTask({
+  assertNonEmptyString(title, "title");
+  assertNonEmptyString(activity_type, "activity_type");
+  assertNonEmptyString(user_id, "user_id");
+
+  // This creates your clean "YYYY-MM-DDTHH:MM:00.000" local string snippet
+  const isoStr = combineDateTimeToISO(date, time); 
+
+  const insertObj = {
     task_name: title,
-    description,
+    description: description || null,
     activity_type,
-    duration,
-    start_time,
-    distance,
-    muscle_groups,
-    exercise,
-    weight,
-    set_reps,
+    duration: duration !== undefined && duration !== null ? assertFiniteNumber(duration, "duration") : null,
+    distance: distance !== undefined && distance !== null ? assertFiniteNumber(distance, "distance") : null,
+    muscle_groups: muscle_groups || null,
+    exercise: exercise || null,
+    weight: weight !== undefined && weight !== null ? assertFiniteNumber(weight, "weight") : null,
+    set_reps: set_reps || null,
     user_id,
-  });
+    // CRITICAL: Send the clean isoStr text directly! Do not wrap it in new Date()
+    start_time: isoStr, 
+  };
+  
+  const { data, error } = await supabase
+    .from(TABLE)
+    .insert([insertObj])
+    .select("*")
+    .single();
+
+  if (error) throw new Error(error.message);
+  return data;
 }
 
 export async function rewardUserCoins(user_id, amount = 10) {

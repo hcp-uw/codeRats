@@ -33,8 +33,6 @@ const Profile = () => {
   const [tasks, setTasks] = useState([]);
 
   const isFocused = useIsFocused();
-  
-
 
   const currentTasks = selectedDate === availableDates[0].full ? tasks : [];
 
@@ -49,22 +47,21 @@ const Profile = () => {
   };
 
   const fetchAvatarData = async (uid) => {
-  try {
-    const { data, error } = await supabase
-      .from('avatar')
-      .select('coins, level')
-      .eq('user_id', uid)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('avatar')
+        .select('coins, level')
+        .eq('user_id', uid)
+        .single();
 
-    if (error) throw error;
-    if (data) {
-      setCoins(data.coins);
-      // components can use data.level here too if you want to make the level badge dynamic!
+      if (error) throw error;
+      if (data) {
+        setCoins(data.coins); // Updates state with persistent coins from the schema!
+      }
+    } catch (err) {
+      console.error("Error fetching avatar data:", err.message);
     }
-  } catch (err) {
-    console.error("Error fetching avatar data:", err.message);
-  }
-};
+  };
 
   // Fetch session on load
   useEffect(() => {
@@ -72,8 +69,9 @@ const Profile = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         setUserId(session.user.id);
+        
         fetchUserProfile(session.user.id);
-        calculateDynamicCoins(session.user.id);
+        fetchAvatarData(session.user.id); 
         calculateCurrentStreak(session.user.id);
         fetchTasksForDate(session.user.id, selectedDate);
       }
@@ -91,7 +89,7 @@ const Profile = () => {
   }, [selectedDate, userId]);
 
 
-  // Fetch PRofile Details
+  // Fetch Profile Details
   const fetchUserProfile = async (uid) => {
     const { data } = await supabase
       .from('profiles')
@@ -106,23 +104,30 @@ const Profile = () => {
 
   // Check if rows exist for that particular date in databse
   const fetchTasksForDate = async (uid, dateString) => {
-    const targetDate = new Date(dateString).toISOString().split('T')[0]; // YYYY-MM-DD
+    // Standardizes the selected ribbon date into a clean YYYY-MM-DD format
+    const parsedDate = new Date(dateString);
+    const yyyy = parsedDate.getFullYear();
+    const mm = String(parsedDate.getMonth() + 1).padStart(2, '0');
+    const dd = String(parsedDate.getDate()).padStart(2, '0');
+    const targetDate = `${yyyy}-${mm}-${dd}`; 
     
     const { data } = await supabase
       .from('task')
       .select('*')
       .eq('user_id', uid)
-      .gte('start_time', `${targetDate}T00:00:00.000Z`)
-      .lte('start_time', `${targetDate}T23:59:59.999Z`);
+      // REMOVED 'Z' HERE: Querying against local time snapshots directly
+      .gte('start_time', `${targetDate}T00:00:00.000`)
+      .lte('start_time', `${targetDate}T23:59:59.999`);
 
     if (data) {
       const mappedTasks = data.map(t => ({
         id: t.task_id,
         title: t.task_name,
-        // Since row presence = done, these default to completed
         completed: true 
       }));
       setTasks(mappedTasks);
+    } else {
+      setTasks([]);
     }
   };
 
@@ -146,7 +151,7 @@ const Profile = () => {
 
     // Extract unique calendar dates (YYYY-MM-DD) that have recorded tasks
     const completedDates = new Set(
-      data.map(t => new Date(t.start_time).toISOString().split('T')[0])
+      data.map(t => t.start_time.slice(0, 10))
     );
 
     let currentStreak = 0;
