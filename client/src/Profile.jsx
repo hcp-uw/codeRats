@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, Text, SafeAreaView, ScrollView, TouchableOpacity } from 'react-native';
 import { ChevronLeft, Home, Calendar, Edit3, BarChart2, ShoppingCart, Award, Flame, Target, TrendingUp } from 'lucide-react-native';
 import Navbar from './Navbar';
@@ -9,11 +9,11 @@ const Profile = () => {
   // Generate the upcoming dates for the scroll feature
   const generateDates = () => {
     const dates = [];
-    for (let i = 0; i < 100; i++) {
+    for (let i = -14; i <= 14; i++) {
       const date = new Date();
       date.setDate(date.getDate() + i);
       dates.push({
-        full: date.toDateString(), // Use this as a unique ID/Key
+        full: date.toDateString(), // Matches unique key bindings
         day: date.toLocaleDateString('en-US', { weekday: 'short' }),
         num: date.getDate(),
       });
@@ -22,7 +22,10 @@ const Profile = () => {
   };
 
   const [availableDates] = useState(generateDates());
-  const [selectedDate, setSelectedDate] = useState(availableDates[0].full);
+  const [selectedDate, setSelectedDate] = useState(availableDates[14].full);
+
+  const ribbonScrollRef = useRef(null);
+  const ITEM_WIDTH = 62;
 
 
   // Dynamic State Variables
@@ -34,8 +37,7 @@ const Profile = () => {
 
   const isFocused = useIsFocused();
 
-  const currentTasks = selectedDate === availableDates[0].full ? tasks : [];
-
+  const currentTasks = tasks;
   const toggleTask = (id) => {
     setTasks(tasks.map(task =>
       task.id === id ? { ...task, completed: !task.completed } : task
@@ -78,6 +80,13 @@ const Profile = () => {
     };
     if (isFocused) {
       checkSession();
+
+      setTimeout(() => {
+        ribbonScrollRef.current?.scrollTo({
+          x: 20.25 * ITEM_WIDTH, 
+          animated: false // Set to false if you want it to be invisible to the eye!
+        });
+      }, 100);
     }
   }, [isFocused]);
 
@@ -271,8 +280,6 @@ const Profile = () => {
           </View>
           {/* TODO: backend import user's name e.g. Megan */}
           <Text style={styles.userName}>User's name</Text> 
-          {/* TODO: backend username e.g. IhateRunning */}
-          <Text style={styles.userTitle}>Username</Text> 
         </View>
 
         {/* Stats Row */}
@@ -301,6 +308,7 @@ const Profile = () => {
         {/* Date Picker Ribbon */}
         <View>
           <ScrollView 
+            ref={ribbonScrollRef}
             horizontal 
             showsHorizontalScrollIndicator={false} 
             contentContainerStyle={styles.dateRibbon}
@@ -399,12 +407,13 @@ const styles = StyleSheet.create({
   },
   dateItem: { 
     backgroundColor: '#F2F2F2', 
+    marginHorizontal: 3,
     paddingVertical: 12,
     paddingHorizontal: 20, // Wider horizontal padding for a "pill" or "card" look
     borderRadius: 18, 
     alignItems: 'center', 
     justifyContent: 'center',
-    minWidth: 75, // Ensures the days have a substantial presence
+    minWidth: 50, // Ensures the days have a substantial presence
     // Optional: add a subtle shadow for depth
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
