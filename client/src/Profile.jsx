@@ -33,6 +33,7 @@ const Profile = () => {
   const [tasks, setTasks] = useState([]);
 
   const isFocused = useIsFocused();
+  
 
 
   const currentTasks = selectedDate === availableDates[0].full ? tasks : [];
@@ -47,6 +48,24 @@ const Profile = () => {
     await supabase.auth.signOut();
   };
 
+  const fetchAvatarData = async (uid) => {
+  try {
+    const { data, error } = await supabase
+      .from('avatar')
+      .select('coins, level')
+      .eq('user_id', uid)
+      .single();
+
+    if (error) throw error;
+    if (data) {
+      setCoins(data.coins);
+      // components can use data.level here too if you want to make the level badge dynamic!
+    }
+  } catch (err) {
+    console.error("Error fetching avatar data:", err.message);
+  }
+};
+
   // Fetch session on load
   useEffect(() => {
     const checkSession = async () => {
@@ -59,7 +78,9 @@ const Profile = () => {
         fetchTasksForDate(session.user.id, selectedDate);
       }
     };
-    checkSession();
+    if (isFocused) {
+      checkSession();
+    }
   }, [isFocused]);
 
   // Fetch tasks whenever the user changes the viewed date
@@ -231,7 +252,7 @@ const Profile = () => {
           </TouchableOpacity>
           <View style={styles.currencyContainer}>
             <Award color="white" size={20} />
-            <Text style={styles.currencyText}>{coins}</Text> 
+            <Text style={styles.currencyText}>{coins.toLocaleString()}</Text> 
           </View>
         </View>
 

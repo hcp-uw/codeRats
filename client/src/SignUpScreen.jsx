@@ -27,8 +27,9 @@ export default function SignUpScreen({ navigation }) {
       Alert.alert('Error', 'Please accept the Terms of Service');
       return;
     }
-    
-    const { error } = await supabase.auth.signUp({
+
+    // 1. Create the user credentials inside Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -36,10 +37,52 @@ export default function SignUpScreen({ navigation }) {
       }
     });
 
-    if (error) {
-      Alert.alert('Sign Up Failed', error.message);
+    if (authError) {
+      Alert.alert('Sign Up Failed', authError.message);
+      return;
     } else {
       Alert.alert('Success', 'Check your email to confirm your account!');
+    }
+
+    const newUser = authData?.user;
+
+    // 2. If Auth succeeded, manually build out our public table rows
+    if (newUser) {
+      try {
+        // A. Create the public profiles row (uses 'id')
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert([
+            { 
+              id: newUser.id, 
+              username: username.trim() 
+            }
+          ]);
+
+        if (profileError) throw new Error(`Profile setup failed: ${profileError.message}`);
+
+        // B. Create the starting stats row inside the avatar table (uses 'user_id')
+        const { error: avatarError } = await supabase
+          .from('avatar')
+          .insert([
+            {
+              user_id: newUser.id,
+              level: 1,
+              health: 100,
+              strength: 10,
+              coins: 0
+            }
+          ]);
+
+        if (avatarError) throw new Error(`Avatar stats setup failed: ${avatarError.message}`);
+
+        // If both rows complete beautifully:
+        Alert.alert('Success', 'Account initialized successfully! Please check your email to verify.');
+        
+      } catch (dbError) {
+        console.error("Frontend registration sequence error:", dbError.message);
+        Alert.alert('Registration Warning', dbError.message);
+      }
     }
   };
 

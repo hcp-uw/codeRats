@@ -35,7 +35,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 40,
     paddingBottom: 24,
-    paddingHorizontal: 16,
+    paddingHorizontal: 10, // 16
+    paddingVertical: 12,
+    marginBottom: 18,
+    width: '100%',
+    borderRadius: 12,
   },
   calendarCard: {
     width: '100%',
@@ -45,11 +49,14 @@ const styles = StyleSheet.create({
     borderWidth: 0,
     padding: 0,
   },
-  content: {
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 18,
     width: '100%',
-    backgroundColor: '#D4A574',
+    // Add these lines:
+    backgroundColor: '#D4A574', 
     paddingVertical: 12,
     paddingHorizontal: 10,
     borderRadius: 12,

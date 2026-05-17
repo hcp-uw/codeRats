@@ -182,3 +182,12 @@ export async function createTaskFromWorkoutForm({
     user_id,
   });
 }
+
+export async function rewardUserCoins(user_id, amount = 10) {
+  if (!user_id) throw new Error("user_id is required to reward coins");
+
+  const { error } = await supabase
+    .rpc('increment_coins', { target_user_id: user_id, amount: amount });
+
+  if (error) throw new Error(`Failed to update coins: ${error.message}`);
+}
