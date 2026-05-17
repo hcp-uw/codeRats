@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase'
 import { useIsFocused } from '@react-navigation/native';
 
 const Profile = () => {
+  const TODAY_STR = new Date().toDateString();
   // Generate the upcoming dates for the scroll feature
   const generateDates = () => {
     const dates = [];
@@ -47,6 +48,15 @@ const Profile = () => {
   const handleLogout = async () => {
     await supabase.auth.signOut();
   };
+  
+  const handleSnapToToday = () => {
+    setSelectedDate(TODAY_STR); // Automatically select today's data rows
+    ribbonScrollRef.current?.scrollTo({
+      x: 20.25 * ITEM_WIDTH,
+      animated: true,
+    });
+  };
+
 
   const fetchAvatarData = async (uid) => {
     try {
@@ -284,7 +294,6 @@ const Profile = () => {
 
         {/* Stats Row */}
         <View style={styles.statsRow}>
-          {/* TODO: backend Import user Day streak */ }
           <StatBox icon={<TrendingUp color="white" size={18}/>} label="Day Streak" value={streak} />
           <View style={styles.divider} />
           <StatBox icon={<Target color="white" size={18}/>} label="Goal Rate" value="89%" />
@@ -297,6 +306,15 @@ const Profile = () => {
         <View style={styles.workoutCard}>
           <View style={styles.workoutHeader}>
             <Text style={styles.workoutTitle}>Daily Workout</Text> 
+
+            {/* Action button that returns to Today */}
+            <TouchableOpacity
+              style={styles.todayButton}
+              onPress={handleSnapToToday}
+            >
+              <Text style={styles.todayButtonText}>Today</Text>
+            </TouchableOpacity>
+            
             <View style={styles.completionStatus}>
               <Flame color="#D9A066" size={16} />
               <Text style={styles.completionText}> 
@@ -315,14 +333,33 @@ const Profile = () => {
           >
             {availableDates.map((dateObj) => {
               const isActive = selectedDate === dateObj.full;
+              const isActualToday = dateObj.full === TODAY_STR;
+
               return (
                 <TouchableOpacity 
                   key={dateObj.full} 
                   onPress={() => setSelectedDate(dateObj.full)}
-                  style={[styles.dateItem, isActive && styles.activeDateItem]}
+                  style={[
+                    styles.dateItem, 
+                    isActive && styles.activeDateItem,
+                    // If it is today but NOT actively selected, apply a light, distinct outline tint
+                    (!isActive && isActualToday) && styles.todayShadedItem 
+                  ]}
                 >
-                  <Text style={[styles.dateText, isActive && styles.activeDateText]}>{dateObj.day}</Text>
-                  <Text style={[styles.dateNumber, isActive && styles.activeDateText]}>{dateObj.num}</Text>
+                  <Text style={[
+                    styles.dateText, 
+                    isActive && styles.activeDateText,
+                    (!isActive && isActualToday) && styles.todayShadedText
+                  ]}>
+                    {dateObj.day}
+                  </Text>
+                  <Text style={[
+                    styles.dateNumber, 
+                    isActive && styles.activeDateText,
+                    (!isActive && isActualToday) && styles.todayShadedText
+                  ]}>
+                    {dateObj.num}
+                  </Text>
                 </TouchableOpacity>
               );
             })}
@@ -453,7 +490,29 @@ const styles = StyleSheet.create({
   bottomNav: { position: 'absolute', bottom: 0, width: '100%', height: 90, backgroundColor: 'white', flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 10 },
   navItem: { alignItems: 'center' },
   navLabel: { fontSize: 10, color: '#A1A1A1', marginTop: 4 },
-  activeNavCircle: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#FDF5E6', justifyContent: 'center', alignItems: 'center', marginBottom: 40, borderWidth: 2, borderColor: '#D9A066' }
+  activeNavCircle: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#FDF5E6', justifyContent: 'center', alignItems: 'center', marginBottom: 40, borderWidth: 2, borderColor: '#D9A066' },
+  todayButton: {
+    backgroundColor: 'rgba(217, 160, 102, 0.15)', // Accent tint color opacity
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#D9A066', // Accent theme color boundary
+  },
+  todayButtonText: {
+    color: '#D9A066',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  todayShadedItem: {
+    backgroundColor: '#EAEAEA', // Light background gray block placeholder
+    borderWidth: 1,
+    borderColor: '#D9A066', // Distinct warm accent line frame
+  },
+  todayShadedText: {
+    color: '#D9A066', // Contrasted tracking text
+    fontWeight: '700',
+  }
 });
 
 export default Profile;

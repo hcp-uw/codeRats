@@ -223,7 +223,6 @@ const styles = StyleSheet.create({
   itemRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   points: {
     fontFamily: 'Arial',
@@ -334,41 +333,6 @@ export default function MonthlyCalendar() {
   const [loading, setLoading] = useState(false);
 
   
-  
-  /*
-  useEffect(() => {
-    if (!user) return;
-
-    setLoading(true);
-
-
-    getTasksByUser(user.id).then((tasks: any[]) => {
-      const grouped: DaySchedule = {};
-      for (const task of tasks) {
-        if (!task.start_time) continue;
-        const dateKey = task.start_time.split('T')[0];
-        if (!grouped[dateKey]) grouped[dateKey] = [];
-        grouped[dateKey].push({
-          id: String(task.task_id),
-          title: task.task_name,
-          category: "workout",
-          points: Math.round(task.duration ?? 0),
-          completed: false,
-          description: task.description ?? null,
-          activity_type: task.activity_type ?? null,
-          duration: task.duration ?? null,
-          start_time: task.start_time ?? null,
-          distance: task.distance ?? null,
-          muscle_groups: task.muscle_groups ?? null,
-          exercise: task.exercise ?? null,
-          weight: task.weight ?? null,
-          set_reps: task.set_reps ?? null,
-        });
-      }
-      setSchedule(grouped);
-    }).catch(console.error);
-  }, [user]);*/
-
   useEffect(() => {
     const loadTasks = async () => {
       if (!user) return;
