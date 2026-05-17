@@ -317,6 +317,19 @@ const styles = StyleSheet.create({
     color: '#3d5a3c',
     fontWeight: '600',
   },
+  exerciseSeparator: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)', // Soft ambient border rule
+    marginVertical: 10,
+    borderStyle: 'dashed',
+    borderRadius: 1,
+  },
+  multiExerciseTitle: {
+    color: '#D9A066',
+    fontSize: 15,
+    fontWeight: '600',
+    marginTop: 4,
+  },
 });
 
 export default function MonthlyCalendar() {
@@ -778,10 +791,36 @@ export default function MonthlyCalendar() {
                         )}
                         {item.activity_type === 'weight_lift' && (
                           <>
-                            {item.exercise && <Text style={styles.detailText}>Exercise: {item.exercise}</Text>}
-                            {item.muscle_groups && <Text style={styles.detailText}>Muscles: {item.muscle_groups}</Text>}
-                            {item.weight != null && <Text style={styles.detailText}>Weight: {item.weight} lbs</Text>}
-                            {item.set_reps && <Text style={styles.detailText}>Sets/Reps: {item.set_reps}</Text>}
+                            {item.muscle_groups && <Text style={styles.detailText}>Muscles Target: {item.muscle_groups}</Text>}
+                            
+                            {item.exercise ? (() => {
+                              try {
+                                // Attempt to parse out our dynamic multi-row list
+                                const parsedExercises = JSON.parse(item.exercise);
+                                
+                                if (Array.isArray(parsedExercises)) {
+                                  return (
+                                    <View style={{ marginTop: 6 }}>
+                                      {parsedExercises.map((ex, idx) => (
+                                        <View key={idx}>
+                                          {/* Horizontal Separation Line Rules between items */}
+                                          {idx > 0 && <View style={styles.exerciseSeparator} />}
+                                          
+                                          <Text style={styles.multiExerciseTitle}>🏋️‍♂️ {ex.exercise_name}</Text>
+                                          <View style={{ flexDirection: 'row', paddingLeft: 16, marginTop: 2 }}>
+                                            {ex.weight ? <Text style={styles.detailText}>Weight: {ex.weight} lbs  |  </Text> : null}
+                                            {ex.set_reps ? <Text style={styles.detailText}>Stats: {ex.set_reps}</Text> : null}
+                                          </View>
+                                        </View>
+                                      ))}
+                                    </View>
+                                  );
+                                }
+                              } catch (e) {
+                                // Fallback safe catch: Render standard legacy format if it isn't a array layout bundle
+                                return <Text style={styles.detailText}>Exercise: {item.exercise}</Text>;
+                              }
+                            })() : null}
                           </>
                         )}
                         {item.description && (

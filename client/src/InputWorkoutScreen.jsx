@@ -28,10 +28,18 @@ export default function WorkoutScreen({ navigation }) {
   const [time, setTime] = useState(new Date());
   const [duration, setDuration] = useState("00:00:00");
   const [distance, setDistance] = useState("");
+
+  /*
   const [muscleGroups, setMuscleGroups] = useState("");
   const [exercise, setExercise] = useState("");
   const [weight, setWeight] = useState("");
   const [setReps, setSetReps] = useState("");
+  */
+
+  const [exercisesList, setExercisesList] = useState([
+    { exercise_name: "", weight: "", set_reps: "" }
+  ]);
+  const [muscleGroups, setMuscleGroups] = useState("");
 
   const isWeights = activity === "Weights";
 
@@ -43,6 +51,30 @@ export default function WorkoutScreen({ navigation }) {
     Cycle: "cycle",
     Weights: "weight_lift",
   };
+
+  // Updates a specific input field for a specific index row
+  const handleUpdateExerciseItem = (index, field, value) => {
+    setExercisesList(prev => {
+      const updated = [...prev];
+      updated[index][field] = value;
+      return updated;
+    });
+  };
+
+  // Pushes a brand new row entry field form into the screen matrix
+  const handleAddExerciseRow = () => {
+    setExercisesList(prev => [
+      ...prev,
+      { exercise_name: "", weight: "", set_reps: "" }
+    ]);
+  };
+
+  // Removes a row if the user misclicked
+  const handleRemoveExerciseRow = (index) => {
+    if (exercisesList.length === 1) return; // Keep at least one
+    setExercisesList(prev => prev.filter((_, i) => i !== index));
+  };
+
 
   const handleSaveWorkout = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -63,6 +95,14 @@ export default function WorkoutScreen({ navigation }) {
     const durationMinutes = hh * 60 + mm + (ss || 0) / 60;
 
     try {
+      // Prepare weightlifting data array if applicable
+      let serializedExercises = null;
+      if (isWeights) {
+        // Filter out completely blank rows
+        const validExercises = exercisesList.filter(e => e.exercise_name.trim() !== "");
+        serializedExercises = JSON.stringify(validExercises);
+      }
+
       await createTaskFromWorkoutForm({
         title,
         description,
@@ -72,16 +112,16 @@ export default function WorkoutScreen({ navigation }) {
         duration: durationMinutes,
         distance: !isWeights && distance ? Number(distance) : null,
         muscle_groups: isWeights && muscleGroups ? muscleGroups : null,
-        exercise: isWeights && exercise ? exercise : null,
-        weight: isWeights && weight ? Number(weight) : null,
-        set_reps: isWeights && setReps ? setReps : null,
+
+        // Pass the serialized multi-row JSON block down into the existing field string
+        exercise: isWeights ? serializedExercises : null, 
+        weight: null,   // Set singular column roots to null since we are multiplexing
+        set_reps: null, 
         user_id: user.id,
       });
 
 
       await rewardUserCoins(user.id, 10);
-
-      
 
       Alert.alert("Success", "Workout saved!");
       navigation.goBack();
@@ -151,41 +191,71 @@ export default function WorkoutScreen({ navigation }) {
           <DistancePicker
             value={distance}
             onChange={setDistance}
+            placeholder="Distance (km)"
           />
         )}
 
         {/* Weights-specific fields */}
+        {/* Weights Form Options Matrix */}
         {isWeights && (
           <>
-            <TextInput
-              style={styles.input}
-              placeholder="Muscle groups (e.g. chest, back)"
-              placeholderTextColor="#5F6A5F"
-              value={muscleGroups}
-              onChangeText={setMuscleGroups}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Exercise (e.g. bench press)"
-              placeholderTextColor="#5F6A5F"
-              value={exercise}
-              onChangeText={setExercise}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Weight (lbs)"
-              placeholderTextColor="#5F6A5F"
-              keyboardType="numeric"
-              value={weight}
-              onChangeText={setWeight}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Sets x Reps (e.g. 3x10)"
-              placeholderTextColor="#5F6A5F"
-              value={setReps}
-              onChangeText={setSetReps}
-            />
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Muscle Groups Target</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g. Chest, Triceps"
+                placeholderTextColor="#A1A1A1"
+                value={muscleGroups}
+                onChangeText={setMuscleGroups}
+              />
+            </View>
+
+            <Text style={[styles.label, { marginTop: 10, marginBottom: 5 }]}>Exercises List</Text>
+            
+            {exercisesList.map((item, index) => (
+              <View key={index} style={styles.exerciseRowContainer}>
+                <View style={styles.exerciseRowHeader}>
+                  <Text style={styles.exerciseNumberText}>Exercise #{index + 1}</Text>
+                  {exercisesList.length > 1 && (
+                    <TouchableOpacity onPress={() => handleRemoveExerciseRow(index)}>
+                      <Ionicons name="trash-outline" size={18} color="#FF6B6B" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                <TextInput
+                  style={styles.input}
+                  placeholder="Exercise Name (e.g. Bench Press)"
+                  placeholderTextColor="#A1A1A1"
+                  value={item.exercise_name}
+                  onChangeText={(val) => handleUpdateExerciseItem(index, "exercise_name", val)}
+                />
+
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <TextInput
+                    style={[styles.input, { width: '47%' }]}
+                    placeholder="Weight (lbs)"
+                    placeholderTextColor="#A1A1A1"
+                    keyboardType="numeric"
+                    value={item.weight}
+                    onChangeText={(val) => handleUpdateExerciseItem(index, "weight", val)}
+                  />
+                  <TextInput
+                    style={[styles.input, { width: '47%' }]}
+                    placeholder="Sets x Reps (e.g. 4x10)"
+                    placeholderTextColor="#A1A1A1"
+                    value={item.set_reps}
+                    onChangeText={(val) => handleUpdateExerciseItem(index, "set_reps", val)}
+                  />
+                </View>
+              </View>
+            ))}
+
+            {/* Dynamic Add Button */}
+            <TouchableOpacity style={styles.addExerciseButton} onPress={handleAddExerciseRow}>
+              <Ionicons name="add-circle-outline" size={20} color="#D9A066" style={{ marginRight: 6 }} />
+              <Text style={styles.addExerciseButtonText}>Add Another Exercise</Text>
+            </TouchableOpacity>
           </>
         )}
 
@@ -269,5 +339,41 @@ const styles = StyleSheet.create({
     color: "#3E5A3C",
     fontSize: 16,
     fontWeight: "600",
+  },
+
+  exerciseRowContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  exerciseRowHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  exerciseNumberText: {
+    color: '#D4A574',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  addExerciseButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: '#D9A066',
+    marginBottom: 20,
+  },
+  addExerciseButtonText: {
+    color: '#D9A066',
+    fontWeight: '600',
+    fontSize: 15,
   },
 });
