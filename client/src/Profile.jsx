@@ -129,6 +129,10 @@ const Profile = () => {
     const mm = String(parsedDate.getMonth() + 1).padStart(2, '0');
     const dd = String(parsedDate.getDate()).padStart(2, '0');
     const targetDate = `${yyyy}-${mm}-${dd}`; 
+
+    // Added for mark as complete task
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     
     const { data } = await supabase
       .from('task')
@@ -139,11 +143,16 @@ const Profile = () => {
       .lte('start_time', `${targetDate}T23:59:59.999`);
 
     if (data) {
-      const mappedTasks = data.map(t => ({
-        id: t.task_id,
-        title: t.task_name,
-        completed: true 
-      }));
+      const mappedTasks = data.map(t => {
+        const taskDateStr = t.start_time.slice(0, 10);
+        
+        return {
+          id: t.task_id,
+          title: t.task_name,
+          completed: taskDateStr <= todayStr 
+        }
+        
+      });
       setTasks(mappedTasks);
     } else {
       setTasks([]);
@@ -372,17 +381,24 @@ const Profile = () => {
             currentTasks.map((task) => (
               <View key={task.id} style={styles.taskItem}>
                 <View style={styles.taskLeft}>
-                  <TouchableOpacity 
-                    style={[styles.checkbox, task.completed && { backgroundColor: '#D9A066', borderColor: '#D9A066' }]} 
-                    onPress={() => toggleTask(task.id)} 
+                  {/* Updated Checkbox to dynamically render based on completion state */}
+                  <View 
+                    style={[
+                      styles.checkbox, 
+                      task.completed 
+                        ? { backgroundColor: '#D9A066', borderColor: '#D9A066' } 
+                        : { backgroundColor: 'transparent', borderColor: '#A1A1A1', borderStyle: 'dashed' }
+                    ]} 
                   />
-                  <Text style={[styles.taskTitle, task.completed && { color: '#A1A1A1', textDecorationLine: 'line-through' }]}>
+                  {/* Updated Text styling to only strike-through completed exercises */}
+                  <Text style={[
+                    styles.taskTitle, 
+                    task.completed 
+                      ? { color: '#A1A1A1', textDecorationLine: 'line-through' } 
+                      : { color: '#444444', textDecorationLine: 'none' }
+                  ]}>
                     {task.title}
                   </Text>
-                </View>
-                <View style={styles.taskReward}>
-                  <Award color="#D9A066" size={16} />
-                  <Text style={styles.rewardText}>+{task.reward}</Text>
                 </View>
               </View>
             ))
