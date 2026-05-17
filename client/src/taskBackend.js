@@ -201,3 +201,19 @@ export async function rewardUserCoins(user_id, amount = 10) {
 
   if (error) throw new Error(`Failed to update coins: ${error.message}`);
 }
+
+
+/**
+ * Deducts coins from a user's avatar row when a workout is removed
+ * @param {string} user_id - The authenticated UUID of the user
+ * @param {number} amount - Amount of coins to remove (default 10)
+ */
+export async function deductUserCoins(user_id, amount = 10) {
+  if (!user_id) throw new Error("user_id is required to deduct coins");
+
+  // Reuses our secure RPC tracking, passing a negative amount to subtract balances cleanly
+  const { error } = await supabase
+    .rpc('increment_coins', { target_user_id: user_id, amount: -amount });
+
+  if (error) throw new Error(`Failed to decrement coins: ${error.message}`);
+}

@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, Trophy, Dumbbell, Pencil, Trash2 } from "luc
 import { Modal, View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert } from 'react-native';
 import Navbar from './Navbar';
 import { useAuth } from './AuthContext';
-import { getTasksByUser, deleteTask, updateTask } from './taskBackend';
+import { getTasksByUser, deleteTask, updateTask, deductUserCoins } from './taskBackend';
 import { useIsFocused } from "@react-navigation/native";
 
 interface ScheduleItem {
@@ -56,7 +56,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 18,
     width: '100%',
-    // Add these lines:
     backgroundColor: '#D4A574', 
     paddingVertical: 12,
     paddingHorizontal: 10,
@@ -131,6 +130,14 @@ const styles = StyleSheet.create({
     height: 6,
     borderRadius: 3,
     backgroundColor: '#d4a574',
+  },
+  todayIndicator: {
+    position: 'absolute',
+    bottom: 8,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#3d5a3c',
   },
   modalOverlay: {
     flex: 1,
@@ -344,10 +351,8 @@ export default function MonthlyCalendar() {
         const newSchedule: DaySchedule = {};
         tasks.forEach((task) => {
           if (task.start_time) {
-            // FIX: Instead of raw splitting "T", parse it into a local Date object
             const localDate = new Date(task.start_time);
             
-            // Format safely to local YYYY-MM-DD
             const year = localDate.getFullYear();
             const month = String(localDate.getMonth() + 1).padStart(2, '0');
             const day = String(localDate.getDate()).padStart(2, '0');
@@ -431,6 +436,8 @@ export default function MonthlyCalendar() {
           onPress: async () => {
             try {
               await deleteTask(item.id);
+              await deductUserCoins(user.id, 10);
+
               if (!item.start_time) return;
               const d = new Date(item.start_time);
               const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -577,7 +584,9 @@ export default function MonthlyCalendar() {
                     <Text style={[styles.dayNumber, isTodayDate ? styles.todayNumber : styles.normalDayNumber]}>
                       {day}
                     </Text>
-                    {hasItems && <View style={styles.dotIndicator} />}
+                    {hasItems && (
+                      <View style={isTodayDate ? styles.todayIndicator : styles.dotIndicator} />
+                    )}
                   </TouchableOpacity>
                 </View>
               );
