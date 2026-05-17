@@ -51,8 +51,14 @@ export default function WorkoutScreen({ navigation }) {
       return;
     }
 
-    const dateStr = date.toISOString().split("T")[0];
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+
+    // This one is already safe since .toTimeString() uses local system time
     const timeStr = time.toTimeString().slice(0, 5);
+    
     const [hh, mm, ss] = duration.split(":").map(Number);
     const durationMinutes = hh * 60 + mm + (ss || 0) / 60;
 

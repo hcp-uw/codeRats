@@ -16,18 +16,19 @@ function assertFiniteNumber(value, fieldName) {
   return n;
 }
 
-function combineDateTimeToISO(date, time) {
-  if (!date && !time) return null;
+function combineDateTimeToISO(dateStr, timeStr) {
+  if (!dateStr || !timeStr) return null;
 
-  if (typeof date === "string" && date.includes("T")) {
-    const parsed = Date.parse(date);
-    if (!Number.isNaN(parsed)) return new Date(parsed).toISOString();
-  }
+  // dateStr is "YYYY-MM-DD", timeStr is "HH:MM"
+  // This safely parses them as a local time instead of UTC
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const [hours, minutes] = timeStr.split(':').map(Number);
 
-  if (!date) throw new Error("date is required if time is provided");
-  if (!time) throw new Error("time is required if date is provided");
+  // Months are 0-indexed in JS Date constructors
+  const localDate = new Date(year, month - 1, day, hours, minutes);
 
-  return `${date}T${time}:00.000`;
+  // Returns a fully-qualified UTC ISO string (e.g., "2026-05-17T06:13:00.000Z")
+  return localDate.toISOString();
 }
 
 export async function createTask({

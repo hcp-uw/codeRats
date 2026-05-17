@@ -332,6 +332,7 @@ export default function MonthlyCalendar() {
   const isFocused = useIsFocused();
   const [loading, setLoading] = useState(false);
 
+  const todayDateString = new Date().toLocaleDateString('sv-SE');
   
   useEffect(() => {
     const loadTasks = async () => {
@@ -340,12 +341,18 @@ export default function MonthlyCalendar() {
       try {
         const tasks = await getTasksByUser(user.id);
         
-        // Formats your tasks into the day groups calendar structure
         const newSchedule: DaySchedule = {};
         tasks.forEach((task) => {
           if (task.start_time) {
-            // Safe split to extract local date format 'YYYY-MM-DD' cleanly
-            const dateKey = task.start_time.split("T")[0]; 
+            // FIX: Instead of raw splitting "T", parse it into a local Date object
+            const localDate = new Date(task.start_time);
+            
+            // Format safely to local YYYY-MM-DD
+            const year = localDate.getFullYear();
+            const month = String(localDate.getMonth() + 1).padStart(2, '0');
+            const day = String(localDate.getDate()).padStart(2, '0');
+            const dateKey = `${year}-${month}-${day}`;
+            
             if (!newSchedule[dateKey]) {
               newSchedule[dateKey] = [];
             }
@@ -376,7 +383,6 @@ export default function MonthlyCalendar() {
       }
     };
 
-    // Trigger only if the screen is fully visible to the user
     if (isFocused) {
       loadTasks();
     }
@@ -425,7 +431,9 @@ export default function MonthlyCalendar() {
           onPress: async () => {
             try {
               await deleteTask(item.id);
-              const dateKey = item.start_time ? item.start_time.split('T')[0] : '';
+              if (!item.start_time) return;
+              const d = new Date(item.start_time);
+              const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
               if (!dateKey) return;
               setSchedule(prev => {
                 const updated = { ...prev };
@@ -472,7 +480,9 @@ export default function MonthlyCalendar() {
     }
     try {
       await updateTask(editingItem.id, patch);
-      const dateKey = editingItem.start_time ? editingItem.start_time.split('T')[0] : '';
+      if (!editingItem.start_time) return;
+      const d = new Date(editingItem.start_time);
+      const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       if (dateKey) {
         setSchedule(prev => {
           const updated = { ...prev };
@@ -555,7 +565,8 @@ export default function MonthlyCalendar() {
               const hasItems = hasSchedule(day);
               const isTodayDate = isToday(day);
               return (
-                <View key={day} style={styles.dayCell}>
+                <View 
+                  key={day} style={styles.dayCell}>
                   <TouchableOpacity
                     style={[
                       styles.dayInner,
