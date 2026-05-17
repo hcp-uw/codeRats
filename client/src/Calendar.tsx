@@ -45,9 +45,7 @@ const styles = StyleSheet.create({
     borderWidth: 0,
     padding: 0,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  content: {
     alignItems: 'center',
     marginBottom: 18,
     width: '100%',
@@ -217,6 +215,7 @@ const styles = StyleSheet.create({
   itemRight: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   points: {
     fontFamily: 'Arial',
