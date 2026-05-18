@@ -40,6 +40,14 @@ export default function GoalsScreen({ navigation }) {
   const [selectedGoal, setSelectedGoal] = useState(null);
   const [isediting, setIsEditing] = useState(false);
 
+  const [overdueModalVisible, setOverdueModalVisible] = useState(false);
+  const [currentOverdue, setCurrentOverdue] = useState(null);
+  const [overdueQueue, setOverdueQueue] = useState([]);
+  const [overdueChecked, setOverdueChecked] = useState(false);
+
+
+  const [isRescheduling, setIsRescheduling] = useState(false);
+
   // Fetchs current goals from supabase automatically
   useEffect(() => {
     if (!userId) return;
@@ -62,51 +70,110 @@ export default function GoalsScreen({ navigation }) {
     fetchGoals();
   }, [userId]); // reruns whenever userId changes
 
+  useEffect(() => {
+    if (goals.length === 0 || overdueChecked) return;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const overdue = goals.filter(g => 
+        !g.completed && 
+        g.end && 
+        new Date(g.end) < today
+    );
+
+    if (overdue.length > 0) {
+        setOverdueQueue(overdue);
+        setCurrentOverdue(overdue[0]);
+        setOverdueModalVisible(true);
+    }
+    setOverdueChecked(true);
+}, [goals]);
+
+  const handleNextOverdue = (queue) => {
+    const remaining = queue.slice(1);
+    setOverdueQueue(remaining);
+    if (remaining.length > 0) {
+      setCurrentOverdue(remaining[0]);
+    } else {
+      setOverdueModalVisible(false);
+      setCurrentOverdue(null);
+    }
+  };
+
+  const handleOverdueComplete = async () => {
+    await updateGoal(currentOverdue.id, { status: 'completed' });
+    setGoals(prev => prev.map(g => g.id === currentOverdue.id ? { ...g, completed: true } : g));
+    handleNextOverdue(overdueQueue);
+  };
+
+  const handleOverdueAbandon = async () => {
+    await updateGoal(currentOverdue.id, { status: 'abandoned' });
+    setGoals(prev => prev.filter(g => g.id !== currentOverdue.id));
+    handleNextOverdue(overdueQueue);
+  };
+
+  const handleOverdueKeepGoing = () => {
+    setOverdueModalVisible(false);
+    setGoalEnd(new Date(currentOverdue.end));
+    setTempDate(new Date(currentOverdue.end));
+    setIsRescheduling(true);
+    setDatePickerVisible(true);
+  };
+
   const handleComplete = async (goal) => {
     const newStatus = goal.completed ? 'active' : 'completed';
     await updateGoal(goal.id, { status: newStatus });
     setGoals(prev =>
-        prev.map(g => g.id === goal.id ? { ...g, completed: !g.completed } : g)
+      prev.map(g => g.id === goal.id ? { ...g, completed: !g.completed } : g)
     );
     if (newStatus === 'completed') {
-        confettiRef.current.start();
+      confettiRef.current.start();
     }
   };
 
   const handleSaveGoal = async () => {
-    console.log('fired', goalTitle, goalEnd)
+    console.log('1. fired', goalTitle, goalEnd)
     if (!goalTitle.trim()) return;
+    console.log('2. past title check')
 
-    if (isediting) {
-        const updated = await updateGoal(selectedGoal.id, {
-            goal_name: goalTitle,
-            goal_desc: goalDesc,
-            icon: goalIcon,
-            end_date: goalEnd,
-        });
-        // Set state with new array copy with goal change
-        setGoals(prev =>
-            prev.map(g => g.id === selectedGoal.id ?
-                { ...g, title: updated.goal_name, desc: updated.goal_desc, icon: updated.icon } : g)
-        );
-    } else {
-        const created = await createGoal({
-            goal_name: goalTitle,
-            goal_desc: goalDesc,
-            icon: goalIcon,
-            end_date: goalEnd,
-            user_id: userId,
-        });
-        // Set state with new array copy with new goal
-        setGoals(prev => [...prev, {
-            id: created.goal_id,
-            title: created.goal_name,
-            desc: created.goal_desc,
-            icon: created.icon ?? '🔥',
-            end: created.end_date ?? '',
-            completed: created.status === 'completed'
-        }]);
+    try {
+      if (isediting) {
+          console.log('3. editing branch')
+          const updated = await updateGoal(selectedGoal.id, {
+              goal_name: goalTitle,
+              goal_desc: goalDesc,
+              icon: goalIcon,
+              end_date: goalEnd,
+          });
+          // Set state with new array copy with goal change
+          setGoals(prev =>
+              prev.map(g => g.id === selectedGoal.id ?
+                  { ...g, title: updated.goal_name, desc: updated.goal_desc, icon: updated.icon } : g)
+          );
+      } else {
+          console.log('3. create branch')
+          const created = await createGoal({
+              goal_name: goalTitle,
+              goal_desc: goalDesc,
+              icon: goalIcon,
+              end_date: goalEnd,
+              user_id: userId,
+          });
+          // Set state with new array copy with new goal
+          setGoals(prev => [...prev, {
+              id: created.goal_id,
+              title: created.goal_name,
+              desc: created.goal_desc,
+              icon: created.icon ?? '🔥',
+              end: created.end_date ?? '',
+              completed: created.status === 'completed'
+          }]);
+      }
+      console.log('4. created:', created)
+    } catch (e) {
+        console.log('ERROR:', e.message)
     }
+    
 
     setGoalTitle('');
     setGoalDesc('');
@@ -310,22 +377,28 @@ export default function GoalsScreen({ navigation }) {
 
           {datePickerVisible && (
             <>
-                <DateTimePicker
-                    value={tempDate ?? goalEnd ?? new Date()}
-                    mode="date"
-                    display="spinner"
-                    onChange={onDateChange}
-                />
-                <TouchableOpacity 
-                  style={styles.confirmButton}
-                  onPress={() => {
-                    setGoalEnd(tempDate ?? goalEnd);
-                    setDatePickerVisible(false);
-                  }}>
-                  <Text style={{color: '#fff', fontWeight: '700'}}>Confirm</Text>
-                </TouchableOpacity>
-
-            </>
+                  <DateTimePicker
+                      value={tempDate ?? goalEnd ?? new Date()}
+                      mode="date"
+                      display="spinner"
+                      onChange={onDateChange}
+                  />
+                  <TouchableOpacity 
+                      style={styles.confirmButton}
+                      onPress={async () => {
+                          const newDate = tempDate ?? goalEnd;
+                          setGoalEnd(newDate);
+                          setDatePickerVisible(false);
+                          if (isRescheduling && currentOverdue) {
+                              await updateGoal(currentOverdue.id, { end_date: newDate });
+                              setGoals(prev => prev.map(g => g.id === currentOverdue.id ? { ...g, end: newDate.toISOString() } : g));
+                              setIsRescheduling(false);
+                              handleNextOverdue(overdueQueue);
+                          }
+                      }}>
+                      <Text style={{color: '#fff', fontWeight: '700'}}>Confirm</Text>
+                  </TouchableOpacity>
+              </>
           )}
 
 
@@ -390,6 +463,35 @@ export default function GoalsScreen({ navigation }) {
         </View>
       </View>
     </Modal>
+    <Modal visible={overdueModalVisible} transparent animationType="fade">
+      <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>⏰ Goal Past Due</Text>
+              <Text style={{color: '#fff', marginBottom: 8, fontWeight: '600', fontSize: 16}}>
+                  {currentOverdue?.icon} {currentOverdue?.title}
+              </Text>
+              <Text style={{color: '#fff', opacity: 0.8, marginBottom: 24}}>
+                  This goal was due {formatDate(currentOverdue?.end)}. What would you like to do?
+              </Text>
+
+              <TouchableOpacity style={styles.saveButton} onPress={handleOverdueComplete}>
+                  <Text style={{color: '#fff', fontWeight: '700'}}>✅ Mark Completed</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                  style={[styles.saveButton, {backgroundColor: '#C8935C', marginTop: 10}]} 
+                  onPress={handleOverdueKeepGoing}>
+                  <Text style={{color: '#fff', fontWeight: '700'}}>📅 Keep Going — New Date</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                  style={[styles.saveButton, {backgroundColor: 'rgba(255,255,255,0.2)', marginTop: 10}]} 
+                  onPress={handleOverdueAbandon}>
+                  <Text style={{color: '#fff', fontWeight: '700'}}>🚩 Abandon Goal</Text>
+              </TouchableOpacity>
+          </View>
+      </View>
+  </Modal>
 
     <ConfettiCannon
         count={80}
