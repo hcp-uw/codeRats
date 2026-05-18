@@ -11,15 +11,7 @@ export default function CalendarHeader({ viewMode, onViewModeChange }: HeaderPro
   return (
     <View style={styles.container}>
       <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          onPress={() => onViewModeChange(viewMode === 'weekly' ? 'monthly' : 'weekly')}
-          style={styles.button}
-        >
-          <Text style={styles.buttonText}>Weekly View</Text>
-          <View style={styles.checkIcon}>
-            <Check size={12} color="#3d5a3c" />
-          </View>
-        </TouchableOpacity>
+        
       </View>
     </View>
   );

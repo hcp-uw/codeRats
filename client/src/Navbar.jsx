@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
-import { Home, Calendar, Edit3, BarChart2, ShoppingCart } from 'lucide-react-native';
+import { Home, Calendar, Edit3, BarChart2, CircleFadingPlus } from 'lucide-react-native';
 
 import { useNavigation, useRoute } from '@react-navigation/native';
 
@@ -30,13 +30,7 @@ const Navbar = () => {
         onPress={() => navigateTo('Calendar')}
       />
       
-      {/* Central Action Button */}
-      <TouchableOpacity 
-        style={styles.activeNavCircle} 
-        onPress={() => navigateTo('WorkoutScreen')}
-      >
-        <Edit3 color="#D9A066" size={32} />
-      </TouchableOpacity>
+     
 
       <NavItem 
         icon={<BarChart2 color={isActive('GoalsScreen') ? "#3D523B" : "#A1A1A1"} />} 
@@ -44,9 +38,9 @@ const Navbar = () => {
         onPress={() => navigateTo('GoalsScreen')}
       />
       <NavItem 
-        icon={<ShoppingCart color={isActive('Market') ? "#3D523B" : "#A1A1A1"} />} 
-        label="Market" 
-        onPress={() => navigateTo('Market')}
+        icon={<CircleFadingPlus color={isActive('WorkoutScreen') ? "#3D523B" : "#A1A1A1"} />} 
+        label="WorkoutScreen" 
+        onPress={() => navigateTo('WorkoutScreen')}
       />
     </View>
   );

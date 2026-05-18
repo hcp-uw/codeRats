@@ -257,16 +257,7 @@ export default function GoalsScreen({ navigation }) {
         </View>
     </View>
 
-    {/* Muscle Groups Placeholder */}
-    <View style={styles.tanCard}>
-        <Text style={styles.cardTitle}>Muscle Groups Targeted</Text>
-
-        {/* TODO: replace with a work analytics chart */}
-        <Text style={styles.placeholderText}>
-        Chart coming soon
-            </Text>
-        </View>
-
+   
     {/* Goals List */}
     {/* Active Goals List */}
     <View style={styles.greenCard}>

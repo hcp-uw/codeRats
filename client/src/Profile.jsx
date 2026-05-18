@@ -1,17 +1,41 @@
-import React from 'react';
+import { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, SafeAreaView, ScrollView, TouchableOpacity } from 'react-native';
 import { ChevronLeft, Home, Calendar, Edit3, BarChart2, ShoppingCart, Award, Flame, Target, TrendingUp } from 'lucide-react-native';
-import { useState } from 'react';
 import Navbar from './Navbar';
 import { supabase } from '../lib/supabase'
+import { useIsFocused } from '@react-navigation/native';
 
 const Profile = () => {
-  const dailyTasks = [
-    { id: 1, title: '5km run', reward: 80, completed: false },
-    { id: 2, title: '30 burpees', reward: 40, completed: false },
-    { id: 3, title: 'Stretch 15min', reward: 25, completed: false },
-  ];
-  const [tasks, setTasks] = useState(dailyTasks);
+  // Generate the upcoming dates for the scroll feature
+  const generateDates = () => {
+    const dates = [];
+    for (let i = 0; i < 100; i++) {
+      const date = new Date();
+      date.setDate(date.getDate() + i);
+      dates.push({
+        full: date.toDateString(), // Use this as a unique ID/Key
+        day: date.toLocaleDateString('en-US', { weekday: 'short' }),
+        num: date.getDate(),
+      });
+    }
+    return dates;
+  };
+
+  const [availableDates] = useState(generateDates());
+  const [selectedDate, setSelectedDate] = useState(availableDates[0].full);
+
+
+  // Dynamic State Variables
+  const [userId, setUserId] = useState(null);
+  const [streak, setStreak] = useState(0);
+  const [coins, setCoins] = useState("0");
+  const [userProfile, setUserProfile] = useState({ name: 'Loading...', username: '@loading' });
+  const [tasks, setTasks] = useState([]);
+
+  const isFocused = useIsFocused();
+
+
+  const currentTasks = selectedDate === availableDates[0].full ? tasks : [];
 
   const toggleTask = (id) => {
     setTasks(tasks.map(task =>
@@ -23,9 +47,182 @@ const Profile = () => {
     await supabase.auth.signOut();
   };
 
+  // Fetch session on load
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setUserId(session.user.id);
+        fetchUserProfile(session.user.id);
+        calculateDynamicCoins(session.user.id);
+        calculateCurrentStreak(session.user.id);
+        fetchTasksForDate(session.user.id, selectedDate);
+      }
+    };
+    checkSession();
+  }, [isFocused]);
+
+  // Fetch tasks whenever the user changes the viewed date
+  useEffect(() => {
+    if (userId) {
+      fetchTasksForDate(userId, selectedDate);
+    }
+  }, [selectedDate, userId]);
+
+
+  // Fetch PRofile Details
+  const fetchUserProfile = async (uid) => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('username')
+      .eq('id', uid)
+      .single();
+    
+    if (data) {
+      setUserProfile({ name: data.username, username: `@${data.username}` });
+    }
+  };
+
+  // Check if rows exist for that particular date in databse
+  const fetchTasksForDate = async (uid, dateString) => {
+    const targetDate = new Date(dateString).toISOString().split('T')[0]; // YYYY-MM-DD
+    
+    const { data } = await supabase
+      .from('task')
+      .select('*')
+      .eq('user_id', uid)
+      .gte('start_time', `${targetDate}T00:00:00.000Z`)
+      .lte('start_time', `${targetDate}T23:59:59.999Z`);
+
+    if (data) {
+      const mappedTasks = data.map(t => ({
+        id: t.task_id,
+        title: t.task_name,
+        // Since row presence = done, these default to completed
+        completed: true 
+      }));
+      setTasks(mappedTasks);
+    }
+  };
+
+  // Calculate Streak
+    // Do this by pulling user's task history and walk backwards day-by-day
+    // to compute streak value dynamically
+    // TODO - Later change this to just be a value in the schema 
+  const calculateCurrentStreak = async (uid) => {
+    // Fetch start_times for tasks over the last month (or adjust range as needed)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const { data, error } = await supabase
+      .from('task')
+      .select('start_time')
+      .eq('user_id', uid)
+      .gte('start_time', thirtyDaysAgo.toISOString())
+      .order('start_time', { ascending: false });
+
+    if (error || !data) return;
+
+    // Extract unique calendar dates (YYYY-MM-DD) that have recorded tasks
+    const completedDates = new Set(
+      data.map(t => new Date(t.start_time).toISOString().split('T')[0])
+    );
+
+    let currentStreak = 0;
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+    // Determine our starting baseline date
+    let checkDate = new Date();
+    
+    if (completedDates.has(todayStr)) {
+      // If completed today, start counting backward from today
+      checkDate = today;
+    } else if (completedDates.has(yesterdayStr)) {
+      // If missed today but completed yesterday, streak is still alive starting yesterday
+      checkDate = yesterday;
+    } else {
+      // Missed both today and yesterday? Streak is broken.
+      setStreak(0);
+      return;
+    }
+
+    // Step backward day-by-day until a gap is hit
+    while (true) {
+      const checkDateStr = checkDate.toISOString().split('T')[0];
+      if (completedDates.has(checkDateStr)) {
+        currentStreak++;
+        checkDate.setDate(checkDate.getDate() - 1); // Move 1 day back
+      } else {
+        break; // Chain broken
+      }
+    }
+
+    setStreak(currentStreak);
+  };
+
+
+  // Check with Seorim's version --> Recording New Task Completion
+  const logCompletedTask = async (taskName, activityType = 'running', distance = 5.0) => {
+    if (!userId) return;
+
+    const now = new Date().toISOString();
+
+    const { data, error } = await supabase
+      .from('task')
+      .insert([
+        {
+          user_id: userId,
+          task_name: taskName,
+          start_time: now,
+          activity_type: activityType,
+          distance: distance,
+          // Add default fields or mappings required by your database schema constraints
+        }
+      ])
+      .select();
+
+    if (!error) {
+      // Refresh the streak computation and the current list layout
+      calculateCurrentStreak(userId);
+      fetchTasksForDate(userId, selectedDate);
+    } else {
+      console.error("Error saving task:", error.message);
+    }
+  };
+
+  // Fetch Coins
+  const fetchLiveCoins = async (uid) => {
+    try {
+      const { data, error } = await supabase
+        .from('avatar')
+        .select('coins')
+        .eq('user_id', uid)
+        .single();
+
+      if (data) {
+        // Formats numbers with commas automatically (e.g., 15847 becomes "15,847")
+        setCoins(data.coins.toLocaleString()); 
+      }
+    } catch (err) {
+      console.error("Error pulling live balance details:", err.message);
+    }
+  };
+
+
+  useEffect(() => {
+    if (isFocused && userId) {
+      fetchLiveCoins(userId);
+      calculateCurrentStreak(userId);
+    }
+  }, [isFocused, userId]);
+
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
         
         {/* Header Navigation */}
         <View style={styles.header}>
@@ -34,7 +231,7 @@ const Profile = () => {
           </TouchableOpacity>
           <View style={styles.currencyContainer}>
             <Award color="white" size={20} />
-            <Text style={styles.currencyText}>15,847</Text> // TODO: backend Import user coins
+            <Text style={styles.currencyText}>{coins}</Text> 
           </View>
         </View>
 
@@ -46,62 +243,90 @@ const Profile = () => {
               <Text style={styles.levelText}>Lvl 12</Text>
             </View>
           </View>
-          <Text style={styles.userName}>User's name</Text> // TODO: backend import user's name e.g. Megan
-          <Text style={styles.userTitle}>Fitness Warrior</Text> // TODO: backend username e.g. IhateRunning
+          {/* TODO: backend import user's name e.g. Megan */}
+          <Text style={styles.userName}>User's name</Text> 
+          {/* TODO: backend username e.g. IhateRunning */}
+          <Text style={styles.userTitle}>Username</Text> 
         </View>
 
         {/* Stats Row */}
         <View style={styles.statsRow}>
-          <StatBox icon={<TrendingUp color="white" size={18}/>} label="Day Streak" value="127" /> // TODO: backend Import user Day streak
+          {/* TODO: backend Import user Day streak */ }
+          <StatBox icon={<TrendingUp color="white" size={18}/>} label="Day Streak" value={streak} />
           <View style={styles.divider} />
-          <StatBox icon={<Target color="white" size={18}/>} label="Goal Rate" value="89%" /> // TODO: backend
+          <StatBox icon={<Target color="white" size={18}/>} label="Goal Rate" value="89%" />
           <View style={styles.divider} />
-          <StatBox icon={<Award color="white" size={18}/>} label="Achievements" value="24" /> // TODO: backend
+          <StatBox icon={<Award color="white" size={18}/>} label="Achievements" value="24" />
         </View>
 
         {/* Daily Workout Card */}
+        
         <View style={styles.workoutCard}>
           <View style={styles.workoutHeader}>
             <Text style={styles.workoutTitle}>Daily Workout</Text> 
             <View style={styles.completionStatus}>
               <Flame color="#D9A066" size={16} />
-              <Text style={styles.completionText}> 0/3 completed</Text>
+              <Text style={styles.completionText}> 
+                {currentTasks.filter(t => t.completed).length}/{currentTasks.length} completed
+              </Text>
             </View>
           </View>
 
         {/* Date Picker Ribbon */}
-        <View style={styles.dateRibbon}>
-          {['Tue 21', 'Wed 22', 'Thu 23', 'Fri 24'].map((date, index) => (
-            <View key={index} style={[styles.dateItem, index === 0 && styles.activeDateItem]}>
-              <Text style={[styles.dateText, index === 0 && styles.activeDateText]}>{date.split(' ')[0]}</Text>
-              <Text style={[styles.dateNumber, index === 0 && styles.activeDateText]}>{date.split(' ')[1]}</Text>
-            </View>
-          ))}
-        </View>
+        <View>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false} 
+            contentContainerStyle={styles.dateRibbon}
+          >
+            {availableDates.map((dateObj) => {
+              const isActive = selectedDate === dateObj.full;
+              return (
+                <TouchableOpacity 
+                  key={dateObj.full} 
+                  onPress={() => setSelectedDate(dateObj.full)}
+                  style={[styles.dateItem, isActive && styles.activeDateItem]}
+                >
+                  <Text style={[styles.dateText, isActive && styles.activeDateText]}>{dateObj.day}</Text>
+                  <Text style={[styles.dateNumber, isActive && styles.activeDateText]}>{dateObj.num}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+          </View>
 
         {/* Task List */}
-        {tasks.map((task) => (
-        <View key={task.id} style={styles.taskItem}>
-          <View style={styles.taskLeft}>
-            <TouchableOpacity 
-              style={[styles.checkbox, task.completed && { backgroundColor: '#D9A066', borderColor: '#D9A066' }]} 
-              onPress={() => toggleTask(task.id)} 
-            />
-            <Text style={[styles.taskTitle, task.completed && { color: '#A1A1A1', textDecorationLine: 'line-through' }]}>{task.title}</Text>
-          </View>
-          <View style={styles.taskReward}>
-            <Award color="#D9A066" size={16} />
-            <Text style={styles.rewardText}>+{task.reward}</Text>
-          </View>
-        </View>
-        ))}
-      </View>
-
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          {currentTasks.length > 0 ? (
+            currentTasks.map((task) => (
+              <View key={task.id} style={styles.taskItem}>
+                <View style={styles.taskLeft}>
+                  <TouchableOpacity 
+                    style={[styles.checkbox, task.completed && { backgroundColor: '#D9A066', borderColor: '#D9A066' }]} 
+                    onPress={() => toggleTask(task.id)} 
+                  />
+                  <Text style={[styles.taskTitle, task.completed && { color: '#A1A1A1', textDecorationLine: 'line-through' }]}>
+                    {task.title}
+                  </Text>
+                </View>
+                <View style={styles.taskReward}>
+                  <Award color="#D9A066" size={16} />
+                  <Text style={styles.rewardText}>+{task.reward}</Text>
+                </View>
+              </View>
+            ))
+          ) : (
+            <View style={{ alignItems: 'center', marginTop: 40 }}>
+              <Text style={{ color: '#A1A1A1' }}>No workouts scheduled for this day.</Text>
+            </View>
+          )}
         </ScrollView>
+      </View>        
       <Navbar />
   </SafeAreaView>
   );
 };
+
 
 // Reusable Components
 const StatBox = ({ icon, label, value }) => (
@@ -141,12 +366,49 @@ const styles = StyleSheet.create({
   workoutTitle: { color: '#E0E0E0', fontSize: 18, fontWeight: '600' },
   completionStatus: { flexDirection: 'row', alignItems: 'center' },
   completionText: { color: '#A1A1A1', fontSize: 14 },
-  dateRibbon: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 25 },
-  dateItem: { backgroundColor: '#F2F2F2', padding: 15, borderRadius: 15, alignItems: 'center', width: '22%' },
-  activeDateItem: { backgroundColor: '#D9A066' },
-  dateText: { color: '#888', fontSize: 12 },
-  dateNumber: { color: '#444', fontSize: 18, fontWeight: 'bold' },
-  activeDateText: { color: 'white' },
+  dateRibbon: { 
+    flexDirection: 'row', 
+    paddingHorizontal: 25, // Re-aligns the first item with your content padding
+    gap: 15, // Creates consistent spacing between items
+  },
+  dateItem: { 
+    backgroundColor: '#F2F2F2', 
+    paddingVertical: 12,
+    paddingHorizontal: 20, // Wider horizontal padding for a "pill" or "card" look
+    borderRadius: 18, 
+    alignItems: 'center', 
+    justifyContent: 'center',
+    minWidth: 75, // Ensures the days have a substantial presence
+    // Optional: add a subtle shadow for depth
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  datePickerContainer: {
+    marginBottom: 20,
+    marginHorizontal: -25, // This pulls the scroll area to the edges of the screen
+  },
+  activeDateItem: { 
+    backgroundColor: '#D9A066',
+    elevation: 4,
+  },
+  dateText: { 
+    color: '#888', 
+    fontSize: 13, 
+    fontWeight: '500',
+    marginBottom: 2,
+    textTransform: 'uppercase'
+  },
+  dateNumber: { 
+    color: '#444', 
+    fontSize: 20, 
+    fontWeight: 'bold' 
+  },
+  activeDateText: { 
+    color: 'white' 
+  },
   taskItem: { backgroundColor: '#F9F9F4', padding: 18, borderRadius: 15, flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
   taskLeft: { flexDirection: 'row', alignItems: 'center' },
   checkbox: { width: 20, height: 20, borderRadius: 5, borderWidth: 1, borderColor: '#D9A066', marginRight: 15 },
