@@ -71,45 +71,83 @@ export default function GoalsScreen({ navigation }) {
   }, [userId]); // reruns whenever userId changes
 
   useEffect(() => {
-    if (goals.length === 0 || overdueChecked) return;
+    if (!userId || goals.length === 0) return;
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
-    const overdue = goals.filter(g => 
-        !g.completed && 
-        g.end && 
-        new Date(g.end) < today
-    );
+
+    const overdue = goals.filter(g => {
+      if (!g.end || g.completed) return false;
+
+      const d = new Date(g.end);
+      if (isNaN(d)) return false;
+
+      d.setHours(0, 0, 0, 0);
+      return d < today;
+    });
 
     if (overdue.length > 0) {
-        setOverdueQueue(overdue);
-        setCurrentOverdue(overdue[0]);
-        setOverdueModalVisible(true);
+      setOverdueQueue(overdue);
+      setCurrentOverdue(overdue[0]);
+      setOverdueModalVisible(true);
     }
-    setOverdueChecked(true);
-}, [goals]);
-
-  const handleNextOverdue = (queue) => {
-    const remaining = queue.slice(1);
-    setOverdueQueue(remaining);
-    if (remaining.length > 0) {
-      setCurrentOverdue(remaining[0]);
-    } else {
-      setOverdueModalVisible(false);
-      setCurrentOverdue(null);
-    }
-  };
+  }, [goals, userId]);
 
   const handleOverdueComplete = async () => {
-    await updateGoal(currentOverdue.id, { status: 'completed' });
-    setGoals(prev => prev.map(g => g.id === currentOverdue.id ? { ...g, completed: true } : g));
-    handleNextOverdue(overdueQueue);
+    console.log("COMPLETE CLICKED", currentOverdue);
+
+    try {
+      const result = await updateGoal(
+        currentOverdue.id,
+        { status: 'completed' }
+      );
+
+      console.log("update result", result);
+
+      setGoals(prev =>
+        prev.map(g =>
+          g.id === currentOverdue.id
+            ? {
+                ...g,
+                completed: true,
+              }
+            : g
+        )
+      );
+
+      handleNextOverdue();
+
+    } catch (e) {
+      console.log("COMPLETE ERROR:", e.message);
+    }
   };
 
   const handleOverdueAbandon = async () => {
-    await updateGoal(currentOverdue.id, { status: 'abandoned' });
-    setGoals(prev => prev.filter(g => g.id !== currentOverdue.id));
-    handleNextOverdue(overdueQueue);
+    const goal = currentOverdue;
+
+    console.log("ABANDON CLICKED:", goal);
+
+    if (!goal?.id) {
+      console.log("No valid goal to abandon");
+      return;
+    }
+
+    try {
+      const result = await updateGoal(goal.id, {
+        status: 'abandoned'
+      });
+
+      console.log("ABANDON RESULT:", result);
+
+      setGoals(prev =>
+        prev.filter(g => g.id !== goal.id)
+      );
+
+      handleNextOverdue();
+
+    } catch (e) {
+      console.log("ABANDON ERROR:", e.message);
+    }
   };
 
   const handleOverdueKeepGoing = () => {
@@ -118,6 +156,22 @@ export default function GoalsScreen({ navigation }) {
     setTempDate(new Date(currentOverdue.end));
     setIsRescheduling(true);
     setDatePickerVisible(true);
+  };
+
+  const handleNextOverdue = () => {
+    setOverdueQueue(prev => {
+      const remaining = prev.slice(1);
+
+      if (remaining.length > 0) {
+        setCurrentOverdue(remaining[0]);
+        setOverdueModalVisible(true);
+      } else {
+        setCurrentOverdue(null);
+        setOverdueModalVisible(false);
+      }
+
+      return remaining;
+    });
   };
 
   const handleComplete = async (goal) => {
@@ -132,56 +186,75 @@ export default function GoalsScreen({ navigation }) {
   };
 
   const handleSaveGoal = async () => {
-    console.log('1. fired', goalTitle, goalEnd)
+    console.log('1. fired', goalTitle, goalEnd);
+
     if (!goalTitle.trim()) return;
-    console.log('2. past title check')
+    console.log('2. past title check');
 
     try {
-      if (isediting) {
-          console.log('3. editing branch')
-          const updated = await updateGoal(selectedGoal.id, {
-              goal_name: goalTitle,
-              goal_desc: goalDesc,
-              icon: goalIcon,
-              end_date: goalEnd,
-          });
-          // Set state with new array copy with goal change
-          setGoals(prev =>
-              prev.map(g => g.id === selectedGoal.id ?
-                  { ...g, title: updated.goal_name, desc: updated.goal_desc, icon: updated.icon } : g)
-          );
-      } else {
-          console.log('3. create branch')
-          const created = await createGoal({
-              goal_name: goalTitle,
-              goal_desc: goalDesc,
-              icon: goalIcon,
-              end_date: goalEnd,
-              user_id: userId,
-          });
-          // Set state with new array copy with new goal
-          setGoals(prev => [...prev, {
-              id: created.goal_id,
-              title: created.goal_name,
-              desc: created.goal_desc,
-              icon: created.icon ?? '🔥',
-              end: created.end_date ?? '',
-              completed: created.status === 'completed'
-          }]);
-      }
-      console.log('4. created:', created)
-    } catch (e) {
-        console.log('ERROR:', e.message)
-    }
-    
+      let result;
 
-    setGoalTitle('');
-    setGoalDesc('');
-    setGoalIcon('🔥');
-    setModalVisible(false);
-    setIsEditing(false);
-    setGoalEnd(null);
-    setTempDate(null);
+      if (isediting) {
+        console.log('3. editing branch');
+
+        result = await updateGoal(selectedGoal.id, {
+          goal_name: goalTitle,
+          goal_desc: goalDesc,
+          icon: goalIcon,
+          end_date: goalEnd,
+        });
+
+        setGoals(prev =>
+          prev.map(g =>
+            g.id === selectedGoal.id
+              ? {
+                  ...g,
+                  title: result.goal_name,
+                  desc: result.goal_desc,
+                  icon: result.icon,
+                  end: result.end_date,
+                }
+              : g
+          )
+        );
+      } else {
+        console.log('3. create branch');
+
+        result = await createGoal({
+          goal_name: goalTitle,
+          goal_desc: goalDesc,
+          icon: goalIcon,
+          end_date: goalEnd,
+          user_id: userId,
+        });
+
+        setGoals(prev => [
+          ...prev,
+          {
+            id: result.goal_id,
+            title: result.goal_name,
+            desc: result.goal_desc,
+            icon: result.icon ?? '🔥',
+            end: result.end_date ?? '',
+            completed: result.status === 'completed',
+          },
+        ]);
+      }
+
+      console.log('4. success:', result);
+
+      // only reset form after successful save
+      setGoalTitle('');
+      setGoalDesc('');
+      setGoalIcon('🔥');
+      setModalVisible(false);
+      setIsEditing(false);
+      setGoalEnd(null);
+      setTempDate(null);
+
+    } catch (e) {
+      console.log('ERROR:', e.message);
+    }
   };
 
   const handleDelete = async () => {
@@ -467,12 +540,6 @@ export default function GoalsScreen({ navigation }) {
 
               <TouchableOpacity style={styles.saveButton} onPress={handleOverdueComplete}>
                   <Text style={{color: '#fff', fontWeight: '700'}}>✅ Mark Completed</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                  style={[styles.saveButton, {backgroundColor: '#C8935C', marginTop: 10}]} 
-                  onPress={handleOverdueKeepGoing}>
-                  <Text style={{color: '#fff', fontWeight: '700'}}>📅 Keep Going — New Date</Text>
               </TouchableOpacity>
 
               <TouchableOpacity 

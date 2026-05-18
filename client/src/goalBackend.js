@@ -69,7 +69,7 @@ export async function updateGoal(goal_id, patch) {
     .update(updateObj)
     .eq("goal_id", goal_id)
     .select("*")
-    .maybeSingle();
+    .single();
 
   if (error) throw new Error(error.message);
   return data ?? null;
