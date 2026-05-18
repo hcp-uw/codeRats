@@ -1,24 +1,49 @@
-# React Native + Node Template
-Created by Rasmus Makiniemi, curated by the Tech Team
+# codeRats
 
-## Background
-React Native is an open-source JavaScript framework that allows you to build mobile apps using the same codebase, enabling you to write code once and deploy it across different platforms, such as iOS, Android, and Windows.
+## Project Summary
+Momentum is a gamified fitness app that brings traditional RPG-style progression into real-world health and activity tracking. Each user creates an avatar that levels up by gaining gear, skills, and companions when users log mileage, steps, gym time, and other fitness activities. The app motivates users through their community with friendly competition, accountability, and social betting.
 
-React Native is one of the leading mobile development frameworks, and is used by countless companies which you can find out more [about here](https://reactnative.dev/showcase).
+## Problem Statement
+### Problem Definition
+Existing gamified fitness apps are often boring and uninspiring. They tend to feel more like individual tracking tools than actual games. As a result, features become repetitive and users stop paying attention to the gamified elements.
 
-## The Template
-This template uses Expo to seemlessly bridge the gap between developing on a computer to displaying on a mobile device. With the use of the Expo Go app on your phone and a simple one line command in your terminal, Expo generates a QR code for you to scan in the app to open your project on a phone.
+### Solution Approach
+Momentum delivers a fitness experience with unique gamified features that feel genuinely like leveling up in a game. By making progress feel meaningful and rewarding, the app helps keep users engaged, motivated, and excited to continue using the platform.
 
-As Expo automatically sends updates to the app on your phone, you can continuously keep coding and see the updates in real-time.
+## Setup Instructions
+### Prerequisites
+Before running the project, make sure you have:
 
-## Getting Started
-For this project, you need two things installed, Expo Go on your phone and Node.js on your computer which you can find the downloads to here:
-
-- [Expo Go](https://expo.dev/client)
 - [Node.js](https://nodejs.org/en/download)
+- [Expo Go](https://expo.dev/client) installed on your phone
 
-Once you are done with that, start following the steps listed in the README's in the `client` and `server` folders to set up and run the front-end and backend respectively.
+### Run the client
+1. Navigate to the client folder:
 
-Happy coding!
+```bash
+cd client
+```
 
-*PS: This template is far from perfect, so if you find anything wrong, have any questions, or run into any steps you do not understand, reach out to the tech team!*
+2. Install dependencies:
+
+```bash
+npm install
+```
+
+3. Start the development server:
+
+```bash
+npm start
+```
+
+4. Open Expo Go on your phone:
+
+Download the Expo Go app and sign in or create an account. Scan the QR code shown in your terminal or enter the IP address manually. Make sure your phone and computer are on the same network.
+
+## Contributors / Maintainers
+- Megan Pereira [@permeg](https://github.com/permeg)
+- Michelle Ge [@mige000](https://github.com/mige000)
+- Seorim Choi [@sechoi-dev](https://github.com/sechoi-dev)
+- Ryan Mark Genova [@ryanmarkgenova](https://github.com/ryanmarkgenova)
+- Anisha Vaish [@KingDurian](https://github.com/KingDurian)
+- Ellie Lim [@limellie](https://github.com/limellie)

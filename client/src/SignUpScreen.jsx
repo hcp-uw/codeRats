@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Text, View, TouchableOpacity, TextInput, ScrollView, SafeAreaView, Alert } from 'react-native';
 import { SignUpStyles as styles } from './AuthStyles';
+import { supabase } from '../lib/supabase';
 
 export default function SignUpScreen({ navigation }) {
   const [username, setUsername] = useState('');
@@ -9,7 +10,7 @@ export default function SignUpScreen({ navigation }) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [termsAccepted, setTermsAccepted] = useState(false);
 
-  const handleSignUp = () => {
+  const handleSignUp = async () => {
     if (!username || !email || !password || !confirmPassword) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
@@ -18,12 +19,71 @@ export default function SignUpScreen({ navigation }) {
       Alert.alert('Error', 'Passwords do not match');
       return;
     }
+    if (password.length < 8) {
+      Alert.alert('Error', 'Password must be at least 8 characters');
+      return;
+    }
     if (!termsAccepted) {
       Alert.alert('Error', 'Please accept the Terms of Service');
       return;
     }
-    // TODO: Handle sign up logic
-    Alert.alert('Success', 'Account created! Ready to start your adventure.');
+
+    // 1. Create the user credentials inside Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { username }
+      }
+    });
+
+    if (authError) {
+      Alert.alert('Sign Up Failed', authError.message);
+      return;
+    } else {
+      Alert.alert('Success', 'Check your email to confirm your account!');
+    }
+
+    const newUser = authData?.user;
+
+    // 2. If Auth succeeded, manually build out our public table rows
+    if (newUser) {
+      try {
+        // A. Create the public profiles row (uses 'id')
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert([
+            { 
+              id: newUser.id, 
+              username: username.trim() 
+            }
+          ]);
+
+        if (profileError) throw new Error(`Profile setup failed: ${profileError.message}`);
+
+        // B. Create the starting stats row inside the avatar table (uses 'user_id')
+        const { error: avatarError } = await supabase
+          .from('avatar')
+          .insert([
+            {
+              user_id: newUser.id,
+              level: 1,
+              health: 100,
+              strength: 10,
+              coins: 0
+            }
+          ]);
+
+        if (avatarError) throw new Error(`Avatar stats setup failed: ${avatarError.message}`);
+
+        // If both rows complete beautifully:
+        Alert.alert('Success', 'Account initialized successfully! Please check your email to verify.');
+        
+      } catch (dbError) {
+        console.error("Frontend registration sequence error:", dbError.message);
+        Alert.alert('Registration Warning', dbError.message);
+      }
+    }
   };
 
   return (
@@ -118,7 +178,7 @@ export default function SignUpScreen({ navigation }) {
         {/* Sign Up Button */}
         <TouchableOpacity
           style={styles.signUpButton}
-          onPress={() => navigation?.navigate('Profile')}
+          onPress={handleSignUp}
         >
           <Text style={styles.signUpButtonText}>Create Account</Text>
         </TouchableOpacity>
