@@ -172,7 +172,7 @@ export default function SignUpScreen({ navigation }) {
           </TouchableOpacity>
           <Text style={styles.checkboxLabel}>
             I agree to the Terms of Service and Privacy Policy
-          </Text> // TODO: Link to actual documents
+          </Text>
         </View>
 
         {/* Sign Up Button */}
