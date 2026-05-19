@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { StyleSheet, View, Text, SafeAreaView, ScrollView, TouchableOpacity, Modal, TouchableWithoutFeedback } from 'react-native';
-import { ChevronLeft, Home, Calendar, Edit3, BarChart2, ShoppingCart, Award, Flame, Target, TrendingUp, X } from 'lucide-react-native';
+import { StyleSheet, View, Text, SafeAreaView, ScrollView, TouchableOpacity, Image, Modal, Pressable  } from 'react-native';
+import { ChevronLeft, Home, Calendar, Edit3, BarChart2, ShoppingCart, Award, Flame, Target, TrendingUp } from 'lucide-react-native';
 import Navbar from './Navbar';
 import { supabase } from '../lib/supabase'
+import { getAvatarByUser, createAvatar } from './avatarBackend';
 import { useIsFocused } from '@react-navigation/native';
 import { getGoalsByUser } from './goalBackend';
 
@@ -35,11 +36,9 @@ const Profile = () => {
   const [coins, setCoins] = useState("0");
   const [userProfile, setUserProfile] = useState({ name: 'Loading...', username: '@loading' });
   const [tasks, setTasks] = useState([]);
-  const [goals, setGoals] = useState([]);
-  
-  // UI Modal State from Version 2
-  const [avatarModalVisible, setAvatarModalVisible] = useState(false);
-
+  const [avatar, setAvatar] = useState(null);
+  const [loadingAvatar, setLoadingAvatar] = useState(true);
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
   const isFocused = useIsFocused();
 
   const currentTasks = tasks;
@@ -48,6 +47,9 @@ const Profile = () => {
       task.id === id ? { ...task, completed: !task.completed } : task
     ));
   };
+
+
+
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -69,14 +71,20 @@ const Profile = () => {
         .eq('user_id', uid)
         .single();
 
-      if (error) throw error;
-      if (data) {
-        setCoins(data.coins); // Updates state with persistent coins from the schema!
-      }
-    } catch (err) {
-      console.error("Error fetching avatar data:", err.message);
+    let avatarRow = await getAvatarByUser(uid);
+
+    if (!avatarRow) {
+      avatarRow = await createAvatar({ user_id: uid });
     }
-  };
+
+    setAvatar(avatarRow);
+    setCoins((avatarRow.coins ?? 0).toLocaleString());
+  } catch (err) {
+    console.error("Error fetching avatar data:", err.message);
+  } finally {
+    setLoadingAvatar(false);
+  }
+};
 
   // Fetch active goals from database
   const fetchActiveGoals = async (uid) => {
@@ -280,27 +288,34 @@ const Profile = () => {
           </TouchableOpacity>
           <View style={styles.currencyContainer}>
             <Award color="white" size={20} />
-            <Text style={styles.currencyText}>{coins.toLocaleString()}</Text> 
+            <Text style={styles.currencyText}>{coins}</Text> 
           </View>
         </View>
 
         {/* Profile Section */}
         <View style={styles.profileSection}>
           <View style={styles.avatarContainer}>
-            {/* Clickable Avatar Container from Version 2 */}
-            <TouchableOpacity
-              style={styles.avatarCircle}
-              onPress={() => setAvatarModalVisible(true)}
-              activeOpacity={0.85}
-            >
-              {/* TODO: drop your interactive character component here */}
-            </TouchableOpacity>
-            
+              <TouchableOpacity
+                style={styles.avatarImageWrapper}
+                onPress={() => setShowAvatarModal(true)}
+                activeOpacity={0.8}
+              >
+                <Image
+                  source={require('../assets/avatar-head.png')}
+                  style={styles.avatarImage}
+                  resizeMode="contain"
+                />
+              </TouchableOpacity>``
             <View style={styles.levelBadge}>
-              <Text style={styles.levelText}>Lvl 12</Text>
+              <Text style={styles.levelText}>
+                Lvl {loadingAvatar ? "..." : (avatar?.level ?? 1)}
+                </Text> // TODO: backend level
             </View>
           </View>
-          <Text style={styles.userName}>{userProfile.name}</Text> 
+          <Text style={styles.userName}>{userProfile.name}</Text> // TODO: backend import user's name e.g. Megan
+          <Text style={styles.userTitle}>
+             HP {loadingAvatar ? "..." : (avatar?.health ?? 100)} • STR {loadingAvatar ? "..." : (avatar?.strength ?? 10)}
+          </Text>
         </View>
 
         {/* Stats Row */}
@@ -375,6 +390,65 @@ const Profile = () => {
             </ScrollView>
           </View>
 
+              {/* Task List */}
+              <ScrollView contentContainerStyle={styles.scrollContent}>
+                {currentTasks.length > 0 ? (
+                  currentTasks.map((task) => (
+                    <View key={task.id} style={styles.taskItem}>
+                      <View style={styles.taskLeft}>
+                        {/* Updated Checkbox to dynamically render based on completion state */}
+                        <View 
+                          style={[
+                            styles.checkbox, 
+                            task.completed 
+                              ? { backgroundColor: '#D9A066', borderColor: '#D9A066' } 
+                              : { backgroundColor: 'transparent', borderColor: '#A1A1A1', borderStyle: 'dashed' }
+                          ]} 
+                        />
+                        {/* Updated Text styling to only strike-through completed exercises */}
+                        <Text style={[
+                          styles.taskTitle, 
+                          task.completed 
+                            ? { color: '#A1A1A1', textDecorationLine: 'line-through' } 
+                            : { color: '#444444', textDecorationLine: 'none' }
+                        ]}>
+                          {task.title}
+                        </Text>
+                      </View>
+                    </View>
+                  ))
+                ) : (
+                  <View style={{ alignItems: 'center', marginTop: 40 }}>
+                    <Text style={{ color: '#A1A1A1' }}>No workouts scheduled for this day.</Text>
+                  </View>
+                )}
+              </ScrollView>
+            </View>    
+            <Modal
+        visible={showAvatarModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowAvatarModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Image
+              source={require('../assets/avatar-full.png')}
+              style={styles.fullAvatarImage}
+              resizeMode="contain"
+            />
+
+            <Pressable
+              style={styles.closeButton}
+              onPress={() => setShowAvatarModal(false)}
+            >
+              <Text style={styles.closeButtonText}>Close</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>    
+      <Navbar />
+  </SafeAreaView>
           {/* Exercise + Goals List */}
           <ScrollView contentContainerStyle={styles.scrollContent}>
             {currentTasks.length > 0 ? (
@@ -575,68 +649,61 @@ const styles = StyleSheet.create({
   todayShadedText: {
     color: '#D9A066', 
     fontWeight: '700',
-  }, 
-  goalBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(217, 160, 102, 0.12)', 
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-    borderWidth: 0.5,
-    borderColor: 'rgba(217, 160, 102, 0.4)',
   },
-  goalBadgeText: {
-    color: '#D9A066',
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  
-  // Modal Style System Imports
+  avatarContainer: {
+  width: 120,
+  height: 120,
+  position: 'relative',
+},
+
+avatarImageWrapper: {
+  width: 120,
+  height: 120,
+  borderRadius: 60,
+  backgroundColor: '#D9A066',
+  overflow: 'hidden',
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+
+avatarImage: {
+  width: 110,
+  height: 110,
+},
+
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(30, 45, 28, 0.75)',
+    backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  modalCard: {
-    backgroundColor: '#2E4A2C',
-    borderRadius: 28,
-    padding: 32,
-    alignItems: 'center',
-    width: 280,
-    borderWidth: 1,
-    borderColor: '#4A6A3A',
+
+modalContent: {
+  width: '85%',
+  height: '70%',
+  backgroundColor: 'white',
+  borderRadius: 20,
+  padding: 16,
+  alignItems: 'center',
+  justifyContent: 'center',
+},
+
+fullAvatarImage: {
+  width: '100%',
+  height: '85%',
+  marginBottom: 16,
+},
+
+  closeButton: {
+    backgroundColor: '#3D523B',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 10,
   },
-  modalClose: {
-    position: 'absolute',
-    top: 14,
-    right: 14,
-    padding: 4,
-  },
-  modalAvatarCircle: {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: '#D9A066',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
-  },
-  modalAvatarPlaceholder: {
-    fontSize: 72,
-  },
-  modalName: {
+
+  closeButtonText: {
     color: 'white',
-    fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  modalTitle: {
-    color: '#A1A1A1',
-    fontSize: 14,
   },
 });
 
