@@ -6,11 +6,10 @@
 - [Prerequisites](#prerequisites)
 - [Getting Started](#getting-started)
 
-## Project Overview
+## Project Setup
 
-This is a very basic template for React Native, created using Expo.
-The goal of this project is to provide HCP teams with a simple clean slate to build off of!
-Follow the [Getting Started](#getting-started) steps below to begin developing!
+Within client install
+**npx expo install react-native-confetti-cannon**
 
 ## Prerequisites
 

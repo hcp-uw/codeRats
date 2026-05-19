@@ -4,6 +4,7 @@ import { ChevronLeft, Home, Calendar, Edit3, BarChart2, ShoppingCart, Award, Fla
 import Navbar from './Navbar';
 import { supabase } from '../lib/supabase'
 import { useIsFocused } from '@react-navigation/native';
+import { getGoalsByUser } from './goalBackend';
 
 const Profile = () => {
   const TODAY_STR = new Date().toDateString();
@@ -35,6 +36,7 @@ const Profile = () => {
   const [coins, setCoins] = useState("0");
   const [userProfile, setUserProfile] = useState({ name: 'Loading...', username: '@loading' });
   const [tasks, setTasks] = useState([]);
+  const [goals, setGoals] = useState([]);
 
   const isFocused = useIsFocused();
 
@@ -75,7 +77,19 @@ const Profile = () => {
     }
   };
 
-  // Fetch session on load
+  // Fetch active goals from database
+  const fetchActiveGoals = async (uid) => {
+    try {
+      const allGoals = await getGoalsByUser(uid);
+      // Filter out completed/abandoned goals so we only show current targets
+      const activeOnly = allGoals.filter(g => g.status === 'active');
+      setGoals(activeOnly);
+    } catch (err) {
+      console.error("Error fetching goals for profile:", err);
+    }
+  };
+
+  // INITIAL LOAD & FOCUS ONLY: Fetch session and snap UI to today
   useEffect(() => {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -86,6 +100,7 @@ const Profile = () => {
         fetchAvatarData(session.user.id); 
         calculateCurrentStreak(session.user.id);
         fetchTasksForDate(session.user.id, selectedDate);
+        fetchActiveGoals(session.user.id);
       }
     };
     if (isFocused) {
@@ -94,13 +109,13 @@ const Profile = () => {
       setTimeout(() => {
         ribbonScrollRef.current?.scrollTo({
           x: 20.25 * ITEM_WIDTH, 
-          animated: false // Set to false if you want it to be invisible to the eye!
+          animated: false // Initial snap should remain clean and non-visible
         });
       }, 100);
     }
-  }, [isFocused]);
+  }, [isFocused]); 
 
-  // Fetch tasks whenever the user changes the viewed date
+  // DATA UPDATES ONLY: Fetch tasks whenever the user explicitly changes the viewed date
   useEffect(() => {
     if (userId) {
       fetchTasksForDate(userId, selectedDate);
@@ -121,7 +136,7 @@ const Profile = () => {
     }
   };
 
-  // Check if rows exist for that particular date in databse
+  // Check if rows exist for that particular date in database
   const fetchTasksForDate = async (uid, dateString) => {
     // Standardizes the selected ribbon date into a clean YYYY-MM-DD format
     const parsedDate = new Date(dateString);
@@ -134,37 +149,60 @@ const Profile = () => {
     const today = new Date();
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     
-    const { data } = await supabase
-      .from('task')
-      .select('*')
-      .eq('user_id', uid)
-      // REMOVED 'Z' HERE: Querying against local time snapshots directly
-      .gte('start_time', `${targetDate}T00:00:00.000`)
-      .lte('start_time', `${targetDate}T23:59:59.999`);
+    try {
+      // A. Fetch Workouts from Supabase
+      const { data: taskData } = await supabase
+        .from('task')
+        .select('*')
+        .eq('user_id', uid)
+        .gte('start_time', `${targetDate}T00:00:00.000`)
+        .lte('start_time', `${targetDate}T23:59:59.999`);
 
-    if (data) {
-      const mappedTasks = data.map(t => {
+      const mappedWorkouts = taskData ? taskData.map(t => {
         const taskDateStr = t.start_time.slice(0, 10);
-        
         return {
           id: t.task_id,
           title: t.task_name,
-          completed: taskDateStr <= todayStr 
-        }
-        
-      });
-      setTasks(mappedTasks);
-    } else {
-      setTasks([]);
+          type: 'workout', // Custom flag to differentiate item types
+          completed: taskDateStr <= todayStr
+        };
+      }) : [];
+
+      // B. Fetch Goals directly from Backend (fixes empty state reference issues)
+      const allGoals = await getGoalsByUser(uid);
+      
+      // Filter out abandoned goals, and verify if their target deadline falls on the targeted day
+      const mappedGoals = allGoals
+        .filter(g => {
+          if (!g.end_date) return false;
+          
+          // Format DB goal end_date string (which contains timestamp data) to clean YYYY-MM-DD
+          const goalDateParsed = new Date(g.end_date);
+          const goalYyyy = goalDateParsed.getFullYear();
+          const goalMm = String(goalDateParsed.getMonth() + 1).padStart(2, '0');
+          const goalDd = String(goalDateParsed.getDate()).padStart(2, '0');
+          const goalCleanDate = `${goalYyyy}-${goalMm}-${goalDd}`;
+
+          return goalCleanDate === targetDate;
+        })
+        .map(g => ({
+          id: g.goal_id,
+          title: `${g.icon || '🎯'} ${g.goal_name}`,
+          type: 'goal', 
+          completed: g.status === 'completed' // Mirror exact completion status from the DB row schema
+        }));
+
+      // C. Merge them into a single comprehensive list
+      const combinedActivities = [...mappedWorkouts, [...mappedGoals]];
+      setTasks(combinedActivities.flat());
+
+    } catch (err) {
+      console.error("Error aggregating daily profile stream:", err);
     }
   };
 
   // Calculate Streak
-    // Do this by pulling user's task history and walk backwards day-by-day
-    // to compute streak value dynamically
-    // TODO - Later change this to just be a value in the schema 
   const calculateCurrentStreak = async (uid) => {
-    // Fetch start_times for tasks over the last month (or adjust range as needed)
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
@@ -177,7 +215,6 @@ const Profile = () => {
 
     if (error || !data) return;
 
-    // Extract unique calendar dates (YYYY-MM-DD) that have recorded tasks
     const completedDates = new Set(
       data.map(t => t.start_time.slice(0, 10))
     );
@@ -190,29 +227,24 @@ const Profile = () => {
     yesterday.setDate(yesterday.getDate() - 1);
     const yesterdayStr = yesterday.toISOString().split('T')[0];
 
-    // Determine our starting baseline date
     let checkDate = new Date();
     
     if (completedDates.has(todayStr)) {
-      // If completed today, start counting backward from today
       checkDate = today;
     } else if (completedDates.has(yesterdayStr)) {
-      // If missed today but completed yesterday, streak is still alive starting yesterday
       checkDate = yesterday;
     } else {
-      // Missed both today and yesterday? Streak is broken.
       setStreak(0);
       return;
     }
 
-    // Step backward day-by-day until a gap is hit
     while (true) {
       const checkDateStr = checkDate.toISOString().split('T')[0];
       if (completedDates.has(checkDateStr)) {
         currentStreak++;
-        checkDate.setDate(checkDate.getDate() - 1); // Move 1 day back
+        checkDate.setDate(checkDate.getDate() - 1);
       } else {
-        break; // Chain broken
+        break;
       }
     }
 
@@ -220,7 +252,6 @@ const Profile = () => {
   };
 
 
-  // Check with Seorim's version --> Recording New Task Completion
   const logCompletedTask = async (taskName, activityType = 'running', distance = 5.0) => {
     if (!userId) return;
 
@@ -235,13 +266,11 @@ const Profile = () => {
           start_time: now,
           activity_type: activityType,
           distance: distance,
-          // Add default fields or mappings required by your database schema constraints
         }
       ])
       .select();
 
     if (!error) {
-      // Refresh the streak computation and the current list layout
       calculateCurrentStreak(userId);
       fetchTasksForDate(userId, selectedDate);
     } else {
@@ -249,7 +278,6 @@ const Profile = () => {
     }
   };
 
-  // Fetch Coins
   const fetchLiveCoins = async (uid) => {
     try {
       const { data, error } = await supabase
@@ -259,7 +287,6 @@ const Profile = () => {
         .single();
 
       if (data) {
-        // Formats numbers with commas automatically (e.g., 15847 becomes "15,847")
         setCoins(data.coins.toLocaleString()); 
       }
     } catch (err) {
@@ -297,7 +324,6 @@ const Profile = () => {
               <Text style={styles.levelText}>Lvl 12</Text>
             </View>
           </View>
-          {/* TODO: backend import user's name e.g. Megan */}
           <Text style={styles.userName}>User's name</Text> 
         </View>
 
@@ -311,7 +337,6 @@ const Profile = () => {
         </View>
 
         {/* Daily Workout Card */}
-        
         <View style={styles.workoutCard}>
           <View style={styles.workoutHeader}>
             <Text style={styles.workoutTitle}>Daily Workout</Text> 
@@ -351,7 +376,6 @@ const Profile = () => {
                   style={[
                     styles.dateItem, 
                     isActive && styles.activeDateItem,
-                    // If it is today but NOT actively selected, apply a light, distinct outline tint
                     (!isActive && isActualToday) && styles.todayShadedItem 
                   ]}
                 >
@@ -375,13 +399,13 @@ const Profile = () => {
           </ScrollView>
           </View>
 
-        {/* Task List */}
+        {/* Exercise + Goals List */}
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {currentTasks.length > 0 ? (
             currentTasks.map((task) => (
-              <View key={task.id} style={styles.taskItem}>
+              <View key={`${task.type}-${task.id}`} style={styles.taskItem}>
                 <View style={styles.taskLeft}>
-                  {/* Updated Checkbox to dynamically render based on completion state */}
+                  {/* Checkbox Frame */}
                   <View 
                     style={[
                       styles.checkbox, 
@@ -390,7 +414,7 @@ const Profile = () => {
                         : { backgroundColor: 'transparent', borderColor: '#A1A1A1', borderStyle: 'dashed' }
                     ]} 
                   />
-                  {/* Updated Text styling to only strike-through completed exercises */}
+                  {/* Dynamic Title Text (Struck out if completed) */}
                   <Text style={[
                     styles.taskTitle, 
                     task.completed 
@@ -400,11 +424,19 @@ const Profile = () => {
                     {task.title}
                   </Text>
                 </View>
+
+                {/* SHOW BADGE EXCLUSIVELY ON THE RIGHT SIDE OF GOAL ITEMS */}
+                {task.type === 'goal' && (
+                  <View style={styles.goalBadge}>
+                    <Award size={14} color="#D9A066" style={{ marginRight: 4 }} />
+                    <Text style={styles.goalBadgeText}>Goal</Text>
+                  </View>
+                )}
               </View>
             ))
           ) : (
             <View style={{ alignItems: 'center', marginTop: 40 }}>
-              <Text style={{ color: '#A1A1A1' }}>No workouts scheduled for this day.</Text>
+              <Text style={{ color: '#A1A1A1' }}>No activities scheduled for this day.</Text>
             </View>
           )}
         </ScrollView>
@@ -455,19 +487,18 @@ const styles = StyleSheet.create({
   completionText: { color: '#A1A1A1', fontSize: 14 },
   dateRibbon: { 
     flexDirection: 'row', 
-    paddingHorizontal: 25, // Re-aligns the first item with your content padding
-    gap: 15, // Creates consistent spacing between items
+    paddingHorizontal: 25, 
+    gap: 15, 
   },
   dateItem: { 
     backgroundColor: '#F2F2F2', 
     marginHorizontal: 3,
     paddingVertical: 12,
-    paddingHorizontal: 20, // Wider horizontal padding for a "pill" or "card" look
+    paddingHorizontal: 20, 
     borderRadius: 18, 
     alignItems: 'center', 
     justifyContent: 'center',
-    minWidth: 50, // Ensures the days have a substantial presence
-    // Optional: add a subtle shadow for depth
+    minWidth: 50, 
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -476,7 +507,7 @@ const styles = StyleSheet.create({
   },
   datePickerContainer: {
     marginBottom: 20,
-    marginHorizontal: -25, // This pulls the scroll area to the edges of the screen
+    marginHorizontal: -25, 
   },
   activeDateItem: { 
     backgroundColor: '#D9A066',
@@ -508,12 +539,12 @@ const styles = StyleSheet.create({
   navLabel: { fontSize: 10, color: '#A1A1A1', marginTop: 4 },
   activeNavCircle: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#FDF5E6', justifyContent: 'center', alignItems: 'center', marginBottom: 40, borderWidth: 2, borderColor: '#D9A066' },
   todayButton: {
-    backgroundColor: 'rgba(217, 160, 102, 0.15)', // Accent tint color opacity
+    backgroundColor: 'rgba(217, 160, 102, 0.15)', 
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#D9A066', // Accent theme color boundary
+    borderColor: '#D9A066', 
   },
   todayButtonText: {
     color: '#D9A066',
@@ -521,14 +552,31 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   todayShadedItem: {
-    backgroundColor: '#EAEAEA', // Light background gray block placeholder
+    backgroundColor: '#EAEAEA', 
     borderWidth: 1,
-    borderColor: '#D9A066', // Distinct warm accent line frame
+    borderColor: '#D9A066', 
   },
   todayShadedText: {
-    color: '#D9A066', // Contrasted tracking text
+    color: '#D9A066', 
     fontWeight: '700',
-  }
+  }, 
+  goalBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(217, 160, 102, 0.12)', 
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    borderWidth: 0.5,
+    borderColor: 'rgba(217, 160, 102, 0.4)',
+  },
+  goalBadgeText: {
+    color: '#D9A066',
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
 });
 
 export default Profile;
