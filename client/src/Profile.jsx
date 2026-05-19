@@ -5,6 +5,7 @@ import Navbar from './Navbar';
 import { supabase } from '../lib/supabase'
 import { getAvatarByUser, createAvatar } from './avatarBackend';
 import { useIsFocused } from '@react-navigation/native';
+import { getGoalsByUser } from './goalBackend';
 
 const Profile = () => {
   const TODAY_STR = new Date().toDateString();
@@ -28,7 +29,6 @@ const Profile = () => {
 
   const ribbonScrollRef = useRef(null);
   const ITEM_WIDTH = 62;
-
 
   // Dynamic State Variables
   const [userId, setUserId] = useState(null);
@@ -63,10 +63,13 @@ const Profile = () => {
     });
   };
 
-
-const fetchAvatarData = async (uid) => {
-  try {
-    setLoadingAvatar(true);
+  const fetchAvatarData = async (uid) => {
+    try {
+      const { data, error } = await supabase
+        .from('avatar')
+        .select('coins, level')
+        .eq('user_id', uid)
+        .single();
 
     let avatarRow = await getAvatarByUser(uid);
 
@@ -83,7 +86,19 @@ const fetchAvatarData = async (uid) => {
   }
 };
 
-  // Fetch session on load
+  // Fetch active goals from database
+  const fetchActiveGoals = async (uid) => {
+    try {
+      const allGoals = await getGoalsByUser(uid);
+      // Filter out completed/abandoned goals so we only show current targets
+      const activeOnly = allGoals.filter(g => g.status === 'active');
+      setGoals(activeOnly);
+    } catch (err) {
+      console.error("Error fetching goals for profile:", err);
+    }
+  };
+
+  // INITIAL LOAD & FOCUS ONLY: Fetch session and snap UI to today
   useEffect(() => {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -94,6 +109,7 @@ const fetchAvatarData = async (uid) => {
         fetchAvatarData(session.user.id); 
         calculateCurrentStreak(session.user.id);
         fetchTasksForDate(session.user.id, selectedDate);
+        fetchActiveGoals(session.user.id);
       }
     };
     if (isFocused) {
@@ -102,19 +118,18 @@ const fetchAvatarData = async (uid) => {
       setTimeout(() => {
         ribbonScrollRef.current?.scrollTo({
           x: 20.25 * ITEM_WIDTH, 
-          animated: false // Set to false if you want it to be invisible to the eye!
+          animated: false // Initial snap should remain clean and non-visible
         });
       }, 100);
     }
-  }, [isFocused]);
+  }, [isFocused]); 
 
-  // Fetch tasks whenever the user changes the viewed date
+  // DATA UPDATES ONLY: Fetch tasks whenever the user explicitly changes the viewed date
   useEffect(() => {
     if (userId) {
       fetchTasksForDate(userId, selectedDate);
     }
   }, [selectedDate, userId]);
-
 
   // Fetch Profile Details
   const fetchUserProfile = async (uid) => {
@@ -129,50 +144,69 @@ const fetchAvatarData = async (uid) => {
     }
   };
 
-  // Check if rows exist for that particular date in databse
+  // Check if rows exist for that particular date in database
   const fetchTasksForDate = async (uid, dateString) => {
-    // Standardizes the selected ribbon date into a clean YYYY-MM-DD format
     const parsedDate = new Date(dateString);
     const yyyy = parsedDate.getFullYear();
     const mm = String(parsedDate.getMonth() + 1).padStart(2, '0');
     const dd = String(parsedDate.getDate()).padStart(2, '0');
     const targetDate = `${yyyy}-${mm}-${dd}`; 
 
-    // Added for mark as complete task
     const today = new Date();
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     
-    const { data } = await supabase
-      .from('task')
-      .select('*')
-      .eq('user_id', uid)
-      // REMOVED 'Z' HERE: Querying against local time snapshots directly
-      .gte('start_time', `${targetDate}T00:00:00.000`)
-      .lte('start_time', `${targetDate}T23:59:59.999`);
+    try {
+      // A. Fetch Workouts from Supabase
+      const { data: taskData } = await supabase
+        .from('task')
+        .select('*')
+        .eq('user_id', uid)
+        .gte('start_time', `${targetDate}T00:00:00.000`)
+        .lte('start_time', `${targetDate}T23:59:59.999`);
 
-    if (data) {
-      const mappedTasks = data.map(t => {
+      const mappedWorkouts = taskData ? taskData.map(t => {
         const taskDateStr = t.start_time.slice(0, 10);
-        
         return {
           id: t.task_id,
           title: t.task_name,
-          completed: taskDateStr <= todayStr 
-        }
-        
-      });
-      setTasks(mappedTasks);
-    } else {
-      setTasks([]);
+          type: 'workout',
+          completed: taskDateStr <= todayStr
+        };
+      }) : [];
+
+      // B. Fetch Goals directly from Backend
+      const allGoals = await getGoalsByUser(uid);
+      
+      const mappedGoals = allGoals
+        .filter(g => {
+          if (!g.end_date) return false;
+          
+          const goalDateParsed = new Date(g.end_date);
+          const goalYyyy = goalDateParsed.getFullYear();
+          const goalMm = String(goalDateParsed.getMonth() + 1).padStart(2, '0');
+          const goalDd = String(goalDateParsed.getDate()).padStart(2, '0');
+          const goalCleanDate = `${goalYyyy}-${goalMm}-${goalDd}`;
+
+          return goalCleanDate === targetDate;
+        })
+        .map(g => ({
+          id: g.goal_id,
+          title: `${g.icon || '🎯'} ${g.goal_name}`,
+          type: 'goal', 
+          completed: g.status === 'completed'
+        }));
+
+      // C. Merge into comprehensive list
+      const combinedActivities = [...mappedWorkouts, ...mappedGoals];
+      setTasks(combinedActivities.flat());
+
+    } catch (err) {
+      console.error("Error aggregating daily profile stream:", err);
     }
   };
 
   // Calculate Streak
-    // Do this by pulling user's task history and walk backwards day-by-day
-    // to compute streak value dynamically
-    // TODO - Later change this to just be a value in the schema 
   const calculateCurrentStreak = async (uid) => {
-    // Fetch start_times for tasks over the last month (or adjust range as needed)
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
@@ -185,7 +219,6 @@ const fetchAvatarData = async (uid) => {
 
     if (error || !data) return;
 
-    // Extract unique calendar dates (YYYY-MM-DD) that have recorded tasks
     const completedDates = new Set(
       data.map(t => t.start_time.slice(0, 10))
     );
@@ -198,66 +231,30 @@ const fetchAvatarData = async (uid) => {
     yesterday.setDate(yesterday.getDate() - 1);
     const yesterdayStr = yesterday.toISOString().split('T')[0];
 
-    // Determine our starting baseline date
     let checkDate = new Date();
     
     if (completedDates.has(todayStr)) {
-      // If completed today, start counting backward from today
       checkDate = today;
     } else if (completedDates.has(yesterdayStr)) {
-      // If missed today but completed yesterday, streak is still alive starting yesterday
       checkDate = yesterday;
     } else {
-      // Missed both today and yesterday? Streak is broken.
       setStreak(0);
       return;
     }
 
-    // Step backward day-by-day until a gap is hit
     while (true) {
       const checkDateStr = checkDate.toISOString().split('T')[0];
       if (completedDates.has(checkDateStr)) {
         currentStreak++;
-        checkDate.setDate(checkDate.getDate() - 1); // Move 1 day back
+        checkDate.setDate(checkDate.getDate() - 1);
       } else {
-        break; // Chain broken
+        break;
       }
     }
 
     setStreak(currentStreak);
   };
 
-
-  // Check with Seorim's version --> Recording New Task Completion
-  const logCompletedTask = async (taskName, activityType = 'running', distance = 5.0) => {
-    if (!userId) return;
-
-    const now = new Date().toISOString();
-
-    const { data, error } = await supabase
-      .from('task')
-      .insert([
-        {
-          user_id: userId,
-          task_name: taskName,
-          start_time: now,
-          activity_type: activityType,
-          distance: distance,
-          // Add default fields or mappings required by your database schema constraints
-        }
-      ])
-      .select();
-
-    if (!error) {
-      // Refresh the streak computation and the current list layout
-      calculateCurrentStreak(userId);
-      fetchTasksForDate(userId, selectedDate);
-    } else {
-      console.error("Error saving task:", error.message);
-    }
-  };
-
-  // Fetch Coins
   const fetchLiveCoins = async (uid) => {
     try {
       const { data, error } = await supabase
@@ -267,14 +264,12 @@ const fetchAvatarData = async (uid) => {
         .single();
 
       if (data) {
-        // Formats numbers with commas automatically (e.g., 15847 becomes "15,847")
         setCoins(data.coins.toLocaleString()); 
       }
     } catch (err) {
       console.error("Error pulling live balance details:", err.message);
     }
   };
-
 
   useEffect(() => {
     if (isFocused && userId) {
@@ -333,7 +328,6 @@ const fetchAvatarData = async (uid) => {
         </View>
 
         {/* Daily Workout Card */}
-        
         <View style={styles.workoutCard}>
           <View style={styles.workoutHeader}>
             <Text style={styles.workoutTitle}>Daily Workout</Text> 
@@ -354,47 +348,46 @@ const fetchAvatarData = async (uid) => {
             </View>
           </View>
 
-        {/* Date Picker Ribbon */}
-        <View>
-          <ScrollView 
-            ref={ribbonScrollRef}
-            horizontal 
-            showsHorizontalScrollIndicator={false} 
-            contentContainerStyle={styles.dateRibbon}
-          >
-            {availableDates.map((dateObj) => {
-              const isActive = selectedDate === dateObj.full;
-              const isActualToday = dateObj.full === TODAY_STR;
+          {/* Date Picker Ribbon */}
+          <View style={styles.datePickerContainer}>
+            <ScrollView 
+              ref={ribbonScrollRef}
+              horizontal 
+              showsHorizontalScrollIndicator={false} 
+              contentContainerStyle={styles.dateRibbon}
+            >
+              {availableDates.map((dateObj) => {
+                const isActive = selectedDate === dateObj.full;
+                const isActualToday = dateObj.full === TODAY_STR;
 
-              return (
-                <TouchableOpacity 
-                  key={dateObj.full} 
-                  onPress={() => setSelectedDate(dateObj.full)}
-                  style={[
-                    styles.dateItem, 
-                    isActive && styles.activeDateItem,
-                    // If it is today but NOT actively selected, apply a light, distinct outline tint
-                    (!isActive && isActualToday) && styles.todayShadedItem 
-                  ]}
-                >
-                  <Text style={[
-                    styles.dateText, 
-                    isActive && styles.activeDateText,
-                    (!isActive && isActualToday) && styles.todayShadedText
-                  ]}>
-                    {dateObj.day}
-                  </Text>
-                  <Text style={[
-                    styles.dateNumber, 
-                    isActive && styles.activeDateText,
-                    (!isActive && isActualToday) && styles.todayShadedText
-                  ]}>
-                    {dateObj.num}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
+                return (
+                  <TouchableOpacity 
+                    key={dateObj.full} 
+                    onPress={() => setSelectedDate(dateObj.full)}
+                    style={[
+                      styles.dateItem, 
+                      isActive && styles.activeDateItem,
+                      (!isActive && isActualToday) && styles.todayShadedItem 
+                    ]}
+                  >
+                    <Text style={[
+                      styles.dateText, 
+                      isActive && styles.activeDateText,
+                      (!isActive && isActualToday) && styles.todayShadedText
+                    ]}>
+                      {dateObj.day}
+                    </Text>
+                    <Text style={[
+                      styles.dateNumber, 
+                      isActive && styles.activeDateText,
+                      (!isActive && isActualToday) && styles.todayShadedText
+                    ]}>
+                      {dateObj.num}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
           </View>
 
               {/* Task List */}
@@ -456,9 +449,87 @@ const fetchAvatarData = async (uid) => {
       </Modal>    
       <Navbar />
   </SafeAreaView>
+          {/* Exercise + Goals List */}
+          <ScrollView contentContainerStyle={styles.scrollContent}>
+            {currentTasks.length > 0 ? (
+              currentTasks.map((task) => (
+                <View key={`${task.type}-${task.id}`} style={styles.taskItem}>
+                  <View style={styles.taskLeft}>
+                    {/* Checkbox Frame */}
+                    <View 
+                      style={[
+                        styles.checkbox, 
+                        task.completed 
+                          ? { backgroundColor: '#D9A066', borderColor: '#D9A066' } 
+                          : { backgroundColor: 'transparent', borderColor: '#A1A1A1', borderStyle: 'dashed' }
+                      ]} 
+                    />
+                    {/* Dynamic Title Text (Struck out if completed) */}
+                    <Text style={[
+                      styles.taskTitle, 
+                      task.completed 
+                        ? { color: '#A1A1A1', textDecorationLine: 'line-through' } 
+                        : { color: '#444444', textDecorationLine: 'none' }
+                    ]}>
+                      {task.title}
+                    </Text>
+                  </View>
+
+                  {/* Goal items condition indicator */}
+                  {task.type === 'goal' && (
+                    <View style={styles.goalBadge}>
+                      <Award size={14} color="#D9A066" style={{ marginRight: 4 }} />
+                      <Text style={styles.goalBadgeText}>Goal</Text>
+                    </View>
+                  )}
+                </View>
+              ))
+            ) : (
+              <View style={{ alignItems: 'center', marginTop: 40 }}>
+                <Text style={{ color: '#A1A1A1' }}>No activities scheduled for this day.</Text>
+              </View>
+            )}
+          </ScrollView>
+        </View>        
+        
+        {/* Avatar Character Interactive Modal Overlay */}
+        <Modal
+          visible={avatarModalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setAvatarModalVisible(false)}
+        >
+          <TouchableWithoutFeedback onPress={() => setAvatarModalVisible(false)}>
+            <View style={styles.modalOverlay}>
+              <TouchableWithoutFeedback>
+                <View style={styles.modalCard}>
+
+                  {/* Close button */}
+                  <TouchableOpacity
+                    style={styles.modalClose}
+                    onPress={() => setAvatarModalVisible(false)}
+                  >
+                    <X color="#D9A066" size={20} />
+                  </TouchableOpacity>
+
+                  {/* Large avatar circle — character context wrapper */}
+                  <View style={styles.modalAvatarCircle}>
+                    {/* TODO: replace with your interactive character component */}
+                    <Text style={styles.modalAvatarPlaceholder}>🏋️</Text>
+                  </View>
+
+                  <Text style={styles.modalName}>{userProfile.name}</Text>
+
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </Modal>
+
+        <Navbar />
+    </SafeAreaView>
   );
 };
-
 
 // Reusable Components
 const StatBox = ({ icon, label, value }) => (
@@ -471,7 +542,6 @@ const StatBox = ({ icon, label, value }) => (
   </View>
 );
 
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#3D523B' },
   scrollContent: { paddingBottom: 100 },
@@ -482,7 +552,14 @@ const styles = StyleSheet.create({
   currencyText: { color: 'white', marginLeft: 5, fontWeight: 'bold' },
   profileSection: { alignItems: 'center', marginTop: 10 },
   avatarContainer: { width: 120, height: 120, position: 'relative' },
-  avatarCircle: { width: '100%', height: '100%', borderRadius: 60, backgroundColor: '#D9A066' },
+  avatarCircle: { 
+    width: '100%', 
+    height: '100%', 
+    borderRadius: 60, 
+    backgroundColor: '#D9A066',
+    alignItems: 'center',
+    justifyContent: 'center' 
+  },
   levelBadge: { position: 'absolute', bottom: 0, right: 0, backgroundColor: '#D9A066', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 2, borderColor: '#3D523B' },
   levelText: { color: 'white', fontSize: 12, fontWeight: 'bold' },
   userName: { color: 'white', fontSize: 24, fontWeight: 'bold', marginTop: 15 },
@@ -500,19 +577,18 @@ const styles = StyleSheet.create({
   completionText: { color: '#A1A1A1', fontSize: 14 },
   dateRibbon: { 
     flexDirection: 'row', 
-    paddingHorizontal: 25, // Re-aligns the first item with your content padding
-    gap: 15, // Creates consistent spacing between items
+    paddingHorizontal: 25, 
+    gap: 15, 
   },
   dateItem: { 
     backgroundColor: '#F2F2F2', 
     marginHorizontal: 3,
     paddingVertical: 12,
-    paddingHorizontal: 20, // Wider horizontal padding for a "pill" or "card" look
+    paddingHorizontal: 20, 
     borderRadius: 18, 
     alignItems: 'center', 
     justifyContent: 'center',
-    minWidth: 50, // Ensures the days have a substantial presence
-    // Optional: add a subtle shadow for depth
+    minWidth: 50, 
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -521,7 +597,7 @@ const styles = StyleSheet.create({
   },
   datePickerContainer: {
     marginBottom: 20,
-    marginHorizontal: -25, // This pulls the scroll area to the edges of the screen
+    marginHorizontal: -25, 
   },
   activeDateItem: { 
     backgroundColor: '#D9A066',
@@ -553,12 +629,12 @@ const styles = StyleSheet.create({
   navLabel: { fontSize: 10, color: '#A1A1A1', marginTop: 4 },
   activeNavCircle: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#FDF5E6', justifyContent: 'center', alignItems: 'center', marginBottom: 40, borderWidth: 2, borderColor: '#D9A066' },
   todayButton: {
-    backgroundColor: 'rgba(217, 160, 102, 0.15)', // Accent tint color opacity
+    backgroundColor: 'rgba(217, 160, 102, 0.15)', 
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#D9A066', // Accent theme color boundary
+    borderColor: '#D9A066', 
   },
   todayButtonText: {
     color: '#D9A066',
@@ -566,12 +642,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   todayShadedItem: {
-    backgroundColor: '#EAEAEA', // Light background gray block placeholder
+    backgroundColor: '#EAEAEA', 
     borderWidth: 1,
-    borderColor: '#D9A066', // Distinct warm accent line frame
+    borderColor: '#D9A066', 
   },
   todayShadedText: {
-    color: '#D9A066', // Contrasted tracking text
+    color: '#D9A066', 
     fontWeight: '700',
   },
   avatarContainer: {
