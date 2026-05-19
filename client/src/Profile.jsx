@@ -1,14 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
-import { StyleSheet, View, Text, SafeAreaView, ScrollView, TouchableOpacity, Image, Modal, Pressable  } from 'react-native';
-import { ChevronLeft, Home, Calendar, Edit3, BarChart2, ShoppingCart, Award, Flame, Target, TrendingUp } from 'lucide-react-native';
+import { StyleSheet, View, Text, SafeAreaView, ScrollView, TouchableOpacity, Image, Modal, Pressable } from 'react-native';
+import { ChevronLeft, Home, Calendar, Edit3, BarChart2, ShoppingCart, Award, Flame, Target, TrendingUp, X } from 'lucide-react-native';
 import Navbar from './Navbar';
-import { supabase } from '../lib/supabase'
+import { supabase } from '../lib/supabase';
 import { getAvatarByUser, createAvatar } from './avatarBackend';
 import { useIsFocused } from '@react-navigation/native';
 import { getGoalsByUser } from './goalBackend';
 
 const Profile = () => {
   const TODAY_STR = new Date().toDateString();
+
   // Generate the upcoming dates for the scroll feature
   const generateDates = () => {
     const dates = [];
@@ -36,20 +37,19 @@ const Profile = () => {
   const [coins, setCoins] = useState("0");
   const [userProfile, setUserProfile] = useState({ name: 'Loading...', username: '@loading' });
   const [tasks, setTasks] = useState([]);
+  const [goals, setGoals] = useState([]);
   const [avatar, setAvatar] = useState(null);
   const [loadingAvatar, setLoadingAvatar] = useState(true);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const isFocused = useIsFocused();
 
   const currentTasks = tasks;
+
   const toggleTask = (id) => {
     setTasks(tasks.map(task =>
       task.id === id ? { ...task, completed: !task.completed } : task
     ));
   };
-
-
-
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -65,26 +65,20 @@ const Profile = () => {
 
   const fetchAvatarData = async (uid) => {
     try {
-      const { data, error } = await supabase
-        .from('avatar')
-        .select('coins, level')
-        .eq('user_id', uid)
-        .single();
+      let avatarRow = await getAvatarByUser(uid);
 
-    let avatarRow = await getAvatarByUser(uid);
+      if (!avatarRow) {
+        avatarRow = await createAvatar({ user_id: uid });
+      }
 
-    if (!avatarRow) {
-      avatarRow = await createAvatar({ user_id: uid });
+      setAvatar(avatarRow);
+      setCoins((avatarRow.coins ?? 0).toLocaleString());
+    } catch (err) {
+      console.error("Error fetching avatar data:", err.message);
+    } finally {
+      setLoadingAvatar(false);
     }
-
-    setAvatar(avatarRow);
-    setCoins((avatarRow.coins ?? 0).toLocaleString());
-  } catch (err) {
-    console.error("Error fetching avatar data:", err.message);
-  } finally {
-    setLoadingAvatar(false);
-  }
-};
+  };
 
   // Fetch active goals from database
   const fetchActiveGoals = async (uid) => {
@@ -295,24 +289,24 @@ const Profile = () => {
         {/* Profile Section */}
         <View style={styles.profileSection}>
           <View style={styles.avatarContainer}>
-              <TouchableOpacity
-                style={styles.avatarImageWrapper}
-                onPress={() => setShowAvatarModal(true)}
-                activeOpacity={0.8}
-              >
-                <Image
-                  source={require('../assets/avatar-head.png')}
-                  style={styles.avatarImage}
-                  resizeMode="contain"
-                />
-              </TouchableOpacity>``
+            <TouchableOpacity
+              style={styles.avatarImageWrapper}
+              onPress={() => setShowAvatarModal(true)}
+              activeOpacity={0.8}
+            >
+              <Image
+                source={require('../assets/avatar-head.png')}
+                style={styles.avatarImage}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
             <View style={styles.levelBadge}>
               <Text style={styles.levelText}>
                 Lvl {loadingAvatar ? "..." : (avatar?.level ?? 1)}
-                </Text> // TODO: backend level
+              </Text>
             </View>
           </View>
-          <Text style={styles.userName}>{userProfile.name}</Text> // TODO: backend import user's name e.g. Megan
+          <Text style={styles.userName}>{userProfile.name}</Text>
           <Text style={styles.userTitle}>
              HP {loadingAvatar ? "..." : (avatar?.health ?? 100)} • STR {loadingAvatar ? "..." : (avatar?.strength ?? 10)}
           </Text>
@@ -390,65 +384,6 @@ const Profile = () => {
             </ScrollView>
           </View>
 
-              {/* Task List */}
-              <ScrollView contentContainerStyle={styles.scrollContent}>
-                {currentTasks.length > 0 ? (
-                  currentTasks.map((task) => (
-                    <View key={task.id} style={styles.taskItem}>
-                      <View style={styles.taskLeft}>
-                        {/* Updated Checkbox to dynamically render based on completion state */}
-                        <View 
-                          style={[
-                            styles.checkbox, 
-                            task.completed 
-                              ? { backgroundColor: '#D9A066', borderColor: '#D9A066' } 
-                              : { backgroundColor: 'transparent', borderColor: '#A1A1A1', borderStyle: 'dashed' }
-                          ]} 
-                        />
-                        {/* Updated Text styling to only strike-through completed exercises */}
-                        <Text style={[
-                          styles.taskTitle, 
-                          task.completed 
-                            ? { color: '#A1A1A1', textDecorationLine: 'line-through' } 
-                            : { color: '#444444', textDecorationLine: 'none' }
-                        ]}>
-                          {task.title}
-                        </Text>
-                      </View>
-                    </View>
-                  ))
-                ) : (
-                  <View style={{ alignItems: 'center', marginTop: 40 }}>
-                    <Text style={{ color: '#A1A1A1' }}>No workouts scheduled for this day.</Text>
-                  </View>
-                )}
-              </ScrollView>
-            </View>    
-            <Modal
-        visible={showAvatarModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowAvatarModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Image
-              source={require('../assets/avatar-full.png')}
-              style={styles.fullAvatarImage}
-              resizeMode="contain"
-            />
-
-            <Pressable
-              style={styles.closeButton}
-              onPress={() => setShowAvatarModal(false)}
-            >
-              <Text style={styles.closeButtonText}>Close</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>    
-      <Navbar />
-  </SafeAreaView>
           {/* Exercise + Goals List */}
           <ScrollView contentContainerStyle={styles.scrollContent}>
             {currentTasks.length > 0 ? (
@@ -492,39 +427,30 @@ const Profile = () => {
           </ScrollView>
         </View>        
         
-        {/* Avatar Character Interactive Modal Overlay */}
+        {/* Preview Character Modal Overlay */}
         <Modal
-          visible={avatarModalVisible}
-          transparent
+          visible={showAvatarModal}
+          transparent={true}
           animationType="fade"
-          onRequestClose={() => setAvatarModalVisible(false)}
+          onRequestClose={() => setShowAvatarModal(false)}
         >
-          <TouchableWithoutFeedback onPress={() => setAvatarModalVisible(false)}>
-            <View style={styles.modalOverlay}>
-              <TouchableWithoutFeedback>
-                <View style={styles.modalCard}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Image
+                source={require('../assets/avatar-full.png')}
+                style={styles.fullAvatarImage}
+                resizeMode="contain"
+              />
 
-                  {/* Close button */}
-                  <TouchableOpacity
-                    style={styles.modalClose}
-                    onPress={() => setAvatarModalVisible(false)}
-                  >
-                    <X color="#D9A066" size={20} />
-                  </TouchableOpacity>
-
-                  {/* Large avatar circle — character context wrapper */}
-                  <View style={styles.modalAvatarCircle}>
-                    {/* TODO: replace with your interactive character component */}
-                    <Text style={styles.modalAvatarPlaceholder}>🏋️</Text>
-                  </View>
-
-                  <Text style={styles.modalName}>{userProfile.name}</Text>
-
-                </View>
-              </TouchableWithoutFeedback>
+              <Pressable
+                style={styles.closeButton}
+                onPress={() => setShowAvatarModal(false)}
+              >
+                <Text style={styles.closeButtonText}>Close</Text>
+              </Pressable>
             </View>
-          </TouchableWithoutFeedback>
-        </Modal>
+          </View>
+        </Modal>    
 
         <Navbar />
     </SafeAreaView>
@@ -552,14 +478,6 @@ const styles = StyleSheet.create({
   currencyText: { color: 'white', marginLeft: 5, fontWeight: 'bold' },
   profileSection: { alignItems: 'center', marginTop: 10 },
   avatarContainer: { width: 120, height: 120, position: 'relative' },
-  avatarCircle: { 
-    width: '100%', 
-    height: '100%', 
-    borderRadius: 60, 
-    backgroundColor: '#D9A066',
-    alignItems: 'center',
-    justifyContent: 'center' 
-  },
   levelBadge: { position: 'absolute', bottom: 0, right: 0, backgroundColor: '#D9A066', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 2, borderColor: '#3D523B' },
   levelText: { color: 'white', fontSize: 12, fontWeight: 'bold' },
   userName: { color: 'white', fontSize: 24, fontWeight: 'bold', marginTop: 15 },
@@ -650,57 +568,45 @@ const styles = StyleSheet.create({
     color: '#D9A066', 
     fontWeight: '700',
   },
-  avatarContainer: {
-  width: 120,
-  height: 120,
-  position: 'relative',
-},
-
-avatarImageWrapper: {
-  width: 120,
-  height: 120,
-  borderRadius: 60,
-  backgroundColor: '#D9A066',
-  overflow: 'hidden',
-  justifyContent: 'center',
-  alignItems: 'center',
-},
-
-avatarImage: {
-  width: 110,
-  height: 110,
-},
-
+  avatarImageWrapper: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#D9A066',
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarImage: {
+    width: 110,
+    height: 110,
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-
-modalContent: {
-  width: '85%',
-  height: '70%',
-  backgroundColor: 'white',
-  borderRadius: 20,
-  padding: 16,
-  alignItems: 'center',
-  justifyContent: 'center',
-},
-
-fullAvatarImage: {
-  width: '100%',
-  height: '85%',
-  marginBottom: 16,
-},
-
+  modalContent: {
+    width: '85%',
+    height: '70%',
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fullAvatarImage: {
+    width: '100%',
+    height: '85%',
+    marginBottom: 16,
+  },
   closeButton: {
     backgroundColor: '#3D523B',
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 10,
   },
-
   closeButtonText: {
     color: 'white',
     fontWeight: 'bold',
