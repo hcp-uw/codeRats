@@ -40,6 +40,14 @@ export default function GoalsScreen({ navigation }) {
   const [selectedGoal, setSelectedGoal] = useState(null);
   const [isediting, setIsEditing] = useState(false);
 
+  const [overdueModalVisible, setOverdueModalVisible] = useState(false);
+  const [currentOverdue, setCurrentOverdue] = useState(null);
+  const [overdueQueue, setOverdueQueue] = useState([]);
+  const [overdueChecked, setOverdueChecked] = useState(false);
+
+
+  const [isRescheduling, setIsRescheduling] = useState(false);
+
   // Fetchs current goals from supabase automatically
   useEffect(() => {
     if (!userId) return;
@@ -62,59 +70,191 @@ export default function GoalsScreen({ navigation }) {
     fetchGoals();
   }, [userId]); // reruns whenever userId changes
 
+  useEffect(() => {
+    if (!userId || goals.length === 0) return;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const overdue = goals.filter(g => {
+      if (!g.end || g.completed) return false;
+
+      const d = new Date(g.end);
+      if (isNaN(d)) return false;
+
+      d.setHours(0, 0, 0, 0);
+      return d < today;
+    });
+
+    if (overdue.length > 0) {
+      setOverdueQueue(overdue);
+      setCurrentOverdue(overdue[0]);
+      setOverdueModalVisible(true);
+    }
+  }, [goals, userId]);
+
+  const handleOverdueComplete = async () => {
+    console.log("COMPLETE CLICKED", currentOverdue);
+
+    try {
+      const result = await updateGoal(
+        currentOverdue.id,
+        { status: 'completed' }
+      );
+
+      console.log("update result", result);
+
+      setGoals(prev =>
+        prev.map(g =>
+          g.id === currentOverdue.id
+            ? {
+                ...g,
+                completed: true,
+              }
+            : g
+        )
+      );
+
+      handleNextOverdue();
+
+    } catch (e) {
+      console.log("COMPLETE ERROR:", e.message);
+    }
+  };
+
+  const handleOverdueAbandon = async () => {
+    const goal = currentOverdue;
+
+    console.log("ABANDON CLICKED:", goal);
+
+    if (!goal?.id) {
+      console.log("No valid goal to abandon");
+      return;
+    }
+
+    try {
+      const result = await updateGoal(goal.id, {
+        status: 'abandoned'
+      });
+
+      console.log("ABANDON RESULT:", result);
+
+      setGoals(prev =>
+        prev.filter(g => g.id !== goal.id)
+      );
+
+      handleNextOverdue();
+
+    } catch (e) {
+      console.log("ABANDON ERROR:", e.message);
+    }
+  };
+
+  const handleOverdueKeepGoing = () => {
+    setOverdueModalVisible(false);
+    setGoalEnd(new Date(currentOverdue.end));
+    setTempDate(new Date(currentOverdue.end));
+    setIsRescheduling(true);
+    setDatePickerVisible(true);
+  };
+
+  const handleNextOverdue = () => {
+    setOverdueQueue(prev => {
+      const remaining = prev.slice(1);
+
+      if (remaining.length > 0) {
+        setCurrentOverdue(remaining[0]);
+        setOverdueModalVisible(true);
+      } else {
+        setCurrentOverdue(null);
+        setOverdueModalVisible(false);
+      }
+
+      return remaining;
+    });
+  };
+
   const handleComplete = async (goal) => {
     const newStatus = goal.completed ? 'active' : 'completed';
     await updateGoal(goal.id, { status: newStatus });
     setGoals(prev =>
-        prev.map(g => g.id === goal.id ? { ...g, completed: !g.completed } : g)
+      prev.map(g => g.id === goal.id ? { ...g, completed: !g.completed } : g)
     );
     if (newStatus === 'completed') {
-        confettiRef.current.start();
+      confettiRef.current.start();
     }
   };
 
   const handleSaveGoal = async () => {
-    console.log('fired', goalTitle, goalEnd)
+    console.log('1. fired', goalTitle, goalEnd);
+
     if (!goalTitle.trim()) return;
+    console.log('2. past title check');
 
-    if (isediting) {
-        const updated = await updateGoal(selectedGoal.id, {
-            goal_name: goalTitle,
-            goal_desc: goalDesc,
-            icon: goalIcon,
-            end_date: goalEnd,
+    try {
+      let result;
+
+      if (isediting) {
+        console.log('3. editing branch');
+
+        result = await updateGoal(selectedGoal.id, {
+          goal_name: goalTitle,
+          goal_desc: goalDesc,
+          icon: goalIcon,
+          end_date: goalEnd,
         });
-        // Set state with new array copy with goal change
+
         setGoals(prev =>
-            prev.map(g => g.id === selectedGoal.id ?
-                { ...g, title: updated.goal_name, desc: updated.goal_desc, icon: updated.icon } : g)
+          prev.map(g =>
+            g.id === selectedGoal.id
+              ? {
+                  ...g,
+                  title: result.goal_name,
+                  desc: result.goal_desc,
+                  icon: result.icon,
+                  end: result.end_date,
+                }
+              : g
+          )
         );
-    } else {
-        const created = await createGoal({
-            goal_name: goalTitle,
-            goal_desc: goalDesc,
-            icon: goalIcon,
-            end_date: goalEnd,
-            user_id: userId,
-        });
-        // Set state with new array copy with new goal
-        setGoals(prev => [...prev, {
-            id: created.goal_id,
-            title: created.goal_name,
-            desc: created.goal_desc,
-            icon: created.icon ?? '🔥',
-            end: created.end_date ?? '',
-            completed: created.status === 'completed'
-        }]);
-    }
+      } else {
+        console.log('3. create branch');
 
-    setGoalTitle('');
-    setGoalDesc('');
-    setGoalIcon('🔥');
-    setModalVisible(false);
-    setIsEditing(false);
-    setGoalEnd(null);
-    setTempDate(null);
+        result = await createGoal({
+          goal_name: goalTitle,
+          goal_desc: goalDesc,
+          icon: goalIcon,
+          end_date: goalEnd,
+          user_id: userId,
+        });
+
+        setGoals(prev => [
+          ...prev,
+          {
+            id: result.goal_id,
+            title: result.goal_name,
+            desc: result.goal_desc,
+            icon: result.icon ?? '🔥',
+            end: result.end_date ?? '',
+            completed: result.status === 'completed',
+          },
+        ]);
+      }
+
+      console.log('4. success:', result);
+
+      // only reset form after successful save
+      setGoalTitle('');
+      setGoalDesc('');
+      setGoalIcon('🔥');
+      setModalVisible(false);
+      setIsEditing(false);
+      setGoalEnd(null);
+      setTempDate(null);
+
+    } catch (e) {
+      console.log('ERROR:', e.message);
+    }
   };
 
   const handleDelete = async () => {
@@ -310,22 +450,28 @@ export default function GoalsScreen({ navigation }) {
 
           {datePickerVisible && (
             <>
-                <DateTimePicker
-                    value={tempDate ?? goalEnd ?? new Date()}
-                    mode="date"
-                    display="spinner"
-                    onChange={onDateChange}
-                />
-                <TouchableOpacity 
-                  style={styles.confirmButton}
-                  onPress={() => {
-                    setGoalEnd(tempDate ?? goalEnd);
-                    setDatePickerVisible(false);
-                  }}>
-                  <Text style={{color: '#fff', fontWeight: '700'}}>Confirm</Text>
-                </TouchableOpacity>
-
-            </>
+                  <DateTimePicker
+                      value={tempDate ?? goalEnd ?? new Date()}
+                      mode="date"
+                      display="spinner"
+                      onChange={onDateChange}
+                  />
+                  <TouchableOpacity 
+                      style={styles.confirmButton}
+                      onPress={async () => {
+                          const newDate = tempDate ?? goalEnd;
+                          setGoalEnd(newDate);
+                          setDatePickerVisible(false);
+                          if (isRescheduling && currentOverdue) {
+                              await updateGoal(currentOverdue.id, { end_date: newDate });
+                              setGoals(prev => prev.map(g => g.id === currentOverdue.id ? { ...g, end: newDate.toISOString() } : g));
+                              setIsRescheduling(false);
+                              handleNextOverdue(overdueQueue);
+                          }
+                      }}>
+                      <Text style={{color: '#fff', fontWeight: '700'}}>Confirm</Text>
+                  </TouchableOpacity>
+              </>
           )}
 
 
@@ -390,6 +536,37 @@ export default function GoalsScreen({ navigation }) {
         </View>
       </View>
     </Modal>
+    <Modal visible={overdueModalVisible} transparent animationType="fade">
+      <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>⏰ Goal Past Due</Text>
+              <Text style={{color: '#fff', marginBottom: 8, fontWeight: '600', fontSize: 16}}>
+                  {currentOverdue?.icon} {currentOverdue?.title}
+              </Text>
+              <Text style={{color: '#fff', opacity: 0.8, marginBottom: 24}}>
+                  This goal was due {formatDate(currentOverdue?.end)}. What would you like to do?
+              </Text>
+
+              <TouchableOpacity style={styles.saveButton} onPress={handleOverdueComplete}>
+                  <Text style={{color: '#fff', fontWeight: '700'}}>✅ Mark Completed</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                  style={[styles.saveButton, {backgroundColor: 'rgba(255,255,255,0.2)', marginTop: 10}]} 
+                  onPress={handleOverdueAbandon}>
+                  <Text style={{color: '#fff', fontWeight: '700'}}>🚩 Abandon Goal</Text>
+              </TouchableOpacity>
+          </View>
+      </View>
+  </Modal>
+
+    <ConfettiCannon
+        count={80}
+        origin={{ x: 200, y: 0 }}
+        autoStart={false}
+        ref={confettiRef}
+        fadeOut={true}
+    />
 
     <ConfettiCannon
         count={80}
