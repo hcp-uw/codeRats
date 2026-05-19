@@ -1,7 +1,6 @@
-import React from 'react';
-import { StyleSheet, View, Text, SafeAreaView, ScrollView, TouchableOpacity } from 'react-native';
-import { ChevronLeft, Home, Calendar, Edit3, BarChart2, ShoppingCart, Award, Flame, Target, TrendingUp } from 'lucide-react-native';
-import { useState } from 'react';
+import React, { useState } from 'react';
+import { StyleSheet, View, Text, SafeAreaView, ScrollView, TouchableOpacity, Modal, TouchableWithoutFeedback } from 'react-native';
+import { ChevronLeft, Home, Calendar, Edit3, BarChart2, ShoppingCart, Award, Flame, Target, TrendingUp, X } from 'lucide-react-native';
 import Navbar from './Navbar';
 
 const Profile = () => {
@@ -11,6 +10,7 @@ const Profile = () => {
     { id: 3, title: 'Stretch 15min', reward: 25, completed: false },
   ];
   const [tasks, setTasks] = useState(dailyTasks);
+  const [avatarModalVisible, setAvatarModalVisible] = useState(false);
 
   const toggleTask = (id) => {
     setTasks(tasks.map(task =>
@@ -21,7 +21,7 @@ const Profile = () => {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        
+
         {/* Header Navigation */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton}>
@@ -30,72 +30,126 @@ const Profile = () => {
           </TouchableOpacity>
           <View style={styles.currencyContainer}>
             <Award color="white" size={20} />
-            <Text style={styles.currencyText}>15,847</Text> // TODO: backend Import user coins
+            <Text style={styles.currencyText}>15,847</Text>
+            {/* TODO: backend Import user coins */}
           </View>
         </View>
 
         {/* Profile Section */}
         <View style={styles.profileSection}>
           <View style={styles.avatarContainer}>
-            <View style={styles.avatarCircle} />
+
+            {/* ── Clickable avatar circle ── */}
+            <TouchableOpacity
+              style={styles.avatarCircle}
+              onPress={() => setAvatarModalVisible(true)}
+              activeOpacity={0.85}
+            >
+              {/* TODO: drop your interactive character component here */}
+            </TouchableOpacity>
+
             <View style={styles.levelBadge}>
               <Text style={styles.levelText}>Lvl 12</Text>
             </View>
           </View>
-          <Text style={styles.userName}>User's name</Text> // TODO: backend import user's name e.g. Megan
-          <Text style={styles.userTitle}>Fitness Warrior</Text> // TODO: backend username e.g. IhateRunning
+
+          <Text style={styles.userName}>User's name</Text>
+          {/* TODO: backend import user's name e.g. Megan */}
+          <Text style={styles.userTitle}>Fitness Warrior</Text>
+          {/* TODO: backend username e.g. IhateRunning */}
         </View>
 
         {/* Stats Row */}
         <View style={styles.statsRow}>
-          <StatBox icon={<TrendingUp color="white" size={18}/>} label="Day Streak" value="127" /> // TODO: backend Import user Day streak
+          <StatBox icon={<TrendingUp color="white" size={18} />} label="Day Streak" value="127" />
+          {/* TODO: backend Import user Day streak */}
           <View style={styles.divider} />
-          <StatBox icon={<Target color="white" size={18}/>} label="Goal Rate" value="89%" /> // TODO: backend
+          <StatBox icon={<Target color="white" size={18} />} label="Goal Rate" value="89%" />
+          {/* TODO: backend */}
           <View style={styles.divider} />
-          <StatBox icon={<Award color="white" size={18}/>} label="Achievements" value="24" /> // TODO: backend
+          <StatBox icon={<Award color="white" size={18} />} label="Achievements" value="24" />
+          {/* TODO: backend */}
         </View>
 
         {/* Daily Workout Card */}
         <View style={styles.workoutCard}>
           <View style={styles.workoutHeader}>
-            <Text style={styles.workoutTitle}>Daily Workout</Text> 
+            <Text style={styles.workoutTitle}>Daily Workout</Text>
             <View style={styles.completionStatus}>
               <Flame color="#D9A066" size={16} />
               <Text style={styles.completionText}> 0/3 completed</Text>
             </View>
           </View>
 
-        {/* Date Picker Ribbon */}
-        <View style={styles.dateRibbon}>
-          {['Tue 21', 'Wed 22', 'Thu 23', 'Fri 24'].map((date, index) => (
-            <View key={index} style={[styles.dateItem, index === 0 && styles.activeDateItem]}>
-              <Text style={[styles.dateText, index === 0 && styles.activeDateText]}>{date.split(' ')[0]}</Text>
-              <Text style={[styles.dateNumber, index === 0 && styles.activeDateText]}>{date.split(' ')[1]}</Text>
+          {/* Date Picker Ribbon */}
+          <View style={styles.dateRibbon}>
+            {['Tue 21', 'Wed 22', 'Thu 23', 'Fri 24'].map((date, index) => (
+              <View key={index} style={[styles.dateItem, index === 0 && styles.activeDateItem]}>
+                <Text style={[styles.dateText, index === 0 && styles.activeDateText]}>{date.split(' ')[0]}</Text>
+                <Text style={[styles.dateNumber, index === 0 && styles.activeDateText]}>{date.split(' ')[1]}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Task List */}
+          {tasks.map((task) => (
+            <View key={task.id} style={styles.taskItem}>
+              <View style={styles.taskLeft}>
+                <TouchableOpacity
+                  style={[styles.checkbox, task.completed && { backgroundColor: '#D9A066', borderColor: '#D9A066' }]}
+                  onPress={() => toggleTask(task.id)}
+                />
+                <Text style={[styles.taskTitle, task.completed && { color: '#A1A1A1', textDecorationLine: 'line-through' }]}>
+                  {task.title}
+                </Text>
+              </View>
+              <View style={styles.taskReward}>
+                <Award color="#D9A066" size={16} />
+                <Text style={styles.rewardText}>+{task.reward}</Text>
+              </View>
             </View>
           ))}
         </View>
 
-        {/* Task List */}
-        {tasks.map((task) => (
-        <View key={task.id} style={styles.taskItem}>
-          <View style={styles.taskLeft}>
-            <TouchableOpacity 
-              style={[styles.checkbox, task.completed && { backgroundColor: '#D9A066', borderColor: '#D9A066' }]} 
-              onPress={() => toggleTask(task.id)} 
-            />
-            <Text style={[styles.taskTitle, task.completed && { color: '#A1A1A1', textDecorationLine: 'line-through' }]}>{task.title}</Text>
-          </View>
-          <View style={styles.taskReward}>
-            <Award color="#D9A066" size={16} />
-            <Text style={styles.rewardText}>+{task.reward}</Text>
-          </View>
-        </View>
-        ))}
-      </View>
+      </ScrollView>
 
-        </ScrollView>
+      {/* ── Avatar Modal ── */}
+      <Modal
+        visible={avatarModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setAvatarModalVisible(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setAvatarModalVisible(false)}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={styles.modalCard}>
+
+                {/* Close button */}
+                <TouchableOpacity
+                  style={styles.modalClose}
+                  onPress={() => setAvatarModalVisible(false)}
+                >
+                  <X color="#D9A066" size={20} />
+                </TouchableOpacity>
+
+                {/* Large avatar circle — character lives here */}
+                <View style={styles.modalAvatarCircle}>
+                  {/* TODO: replace with your interactive character component */}
+                  <Text style={styles.modalAvatarPlaceholder}>🏋️</Text>
+                </View>
+
+                <Text style={styles.modalName}>User's name</Text>
+                <Text style={styles.modalTitle}>Fitness Warrior</Text>
+
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
       <Navbar />
-  </SafeAreaView>
+    </SafeAreaView>
   );
 };
 
@@ -110,7 +164,6 @@ const StatBox = ({ icon, label, value }) => (
   </View>
 );
 
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#3D523B' },
   scrollContent: { paddingBottom: 100 },
@@ -121,7 +174,14 @@ const styles = StyleSheet.create({
   currencyText: { color: 'white', marginLeft: 5, fontWeight: 'bold' },
   profileSection: { alignItems: 'center', marginTop: 10 },
   avatarContainer: { width: 120, height: 120, position: 'relative' },
-  avatarCircle: { width: '100%', height: '100%', borderRadius: 60, backgroundColor: '#D9A066' },
+  avatarCircle: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 60,
+    backgroundColor: '#D9A066',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   levelBadge: { position: 'absolute', bottom: 0, right: 0, backgroundColor: '#D9A066', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 2, borderColor: '#3D523B' },
   levelText: { color: 'white', fontSize: 12, fontWeight: 'bold' },
   userName: { color: 'white', fontSize: 24, fontWeight: 'bold', marginTop: 15 },
@@ -152,7 +212,52 @@ const styles = StyleSheet.create({
   bottomNav: { position: 'absolute', bottom: 0, width: '100%', height: 90, backgroundColor: 'white', flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 10 },
   navItem: { alignItems: 'center' },
   navLabel: { fontSize: 10, color: '#A1A1A1', marginTop: 4 },
-  activeNavCircle: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#FDF5E6', justifyContent: 'center', alignItems: 'center', marginBottom: 40, borderWidth: 2, borderColor: '#D9A066' }
+  activeNavCircle: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#FDF5E6', justifyContent: 'center', alignItems: 'center', marginBottom: 40, borderWidth: 2, borderColor: '#D9A066' },
+
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(30, 45, 28, 0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalCard: {
+    backgroundColor: '#2E4A2C',
+    borderRadius: 28,
+    padding: 32,
+    alignItems: 'center',
+    width: 280,
+    borderWidth: 1,
+    borderColor: '#4A6A3A',
+  },
+  modalClose: {
+    position: 'absolute',
+    top: 14,
+    right: 14,
+    padding: 4,
+  },
+  modalAvatarCircle: {
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: '#D9A066',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  modalAvatarPlaceholder: {
+    fontSize: 72,
+  },
+  modalName: {
+    color: 'white',
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  modalTitle: {
+    color: '#A1A1A1',
+    fontSize: 14,
+  },
 });
 
 export default Profile;
