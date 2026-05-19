@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { StyleSheet, View, Text, SafeAreaView, ScrollView, TouchableOpacity } from 'react-native';
-import { ChevronLeft, Home, Calendar, Edit3, BarChart2, ShoppingCart, Award, Flame, Target, TrendingUp } from 'lucide-react-native';
+import { StyleSheet, View, Text, SafeAreaView, ScrollView, TouchableOpacity, Modal, TouchableWithoutFeedback } from 'react-native';
+import { ChevronLeft, Home, Calendar, Edit3, BarChart2, ShoppingCart, Award, Flame, Target, TrendingUp, X } from 'lucide-react-native';
 import Navbar from './Navbar';
 import { supabase } from '../lib/supabase'
 import { useIsFocused } from '@react-navigation/native';
@@ -29,7 +29,6 @@ const Profile = () => {
   const ribbonScrollRef = useRef(null);
   const ITEM_WIDTH = 62;
 
-
   // Dynamic State Variables
   const [userId, setUserId] = useState(null);
   const [streak, setStreak] = useState(0);
@@ -37,6 +36,9 @@ const Profile = () => {
   const [userProfile, setUserProfile] = useState({ name: 'Loading...', username: '@loading' });
   const [tasks, setTasks] = useState([]);
   const [goals, setGoals] = useState([]);
+  
+  // UI Modal State from Version 2
+  const [avatarModalVisible, setAvatarModalVisible] = useState(false);
 
   const isFocused = useIsFocused();
 
@@ -58,7 +60,6 @@ const Profile = () => {
       animated: true,
     });
   };
-
 
   const fetchAvatarData = async (uid) => {
     try {
@@ -122,7 +123,6 @@ const Profile = () => {
     }
   }, [selectedDate, userId]);
 
-
   // Fetch Profile Details
   const fetchUserProfile = async (uid) => {
     const { data } = await supabase
@@ -138,14 +138,12 @@ const Profile = () => {
 
   // Check if rows exist for that particular date in database
   const fetchTasksForDate = async (uid, dateString) => {
-    // Standardizes the selected ribbon date into a clean YYYY-MM-DD format
     const parsedDate = new Date(dateString);
     const yyyy = parsedDate.getFullYear();
     const mm = String(parsedDate.getMonth() + 1).padStart(2, '0');
     const dd = String(parsedDate.getDate()).padStart(2, '0');
     const targetDate = `${yyyy}-${mm}-${dd}`; 
 
-    // Added for mark as complete task
     const today = new Date();
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     
@@ -163,20 +161,18 @@ const Profile = () => {
         return {
           id: t.task_id,
           title: t.task_name,
-          type: 'workout', // Custom flag to differentiate item types
+          type: 'workout',
           completed: taskDateStr <= todayStr
         };
       }) : [];
 
-      // B. Fetch Goals directly from Backend (fixes empty state reference issues)
+      // B. Fetch Goals directly from Backend
       const allGoals = await getGoalsByUser(uid);
       
-      // Filter out abandoned goals, and verify if their target deadline falls on the targeted day
       const mappedGoals = allGoals
         .filter(g => {
           if (!g.end_date) return false;
           
-          // Format DB goal end_date string (which contains timestamp data) to clean YYYY-MM-DD
           const goalDateParsed = new Date(g.end_date);
           const goalYyyy = goalDateParsed.getFullYear();
           const goalMm = String(goalDateParsed.getMonth() + 1).padStart(2, '0');
@@ -189,11 +185,11 @@ const Profile = () => {
           id: g.goal_id,
           title: `${g.icon || '🎯'} ${g.goal_name}`,
           type: 'goal', 
-          completed: g.status === 'completed' // Mirror exact completion status from the DB row schema
+          completed: g.status === 'completed'
         }));
 
-      // C. Merge them into a single comprehensive list
-      const combinedActivities = [...mappedWorkouts, [...mappedGoals]];
+      // C. Merge into comprehensive list
+      const combinedActivities = [...mappedWorkouts, ...mappedGoals];
       setTasks(combinedActivities.flat());
 
     } catch (err) {
@@ -251,33 +247,6 @@ const Profile = () => {
     setStreak(currentStreak);
   };
 
-
-  const logCompletedTask = async (taskName, activityType = 'running', distance = 5.0) => {
-    if (!userId) return;
-
-    const now = new Date().toISOString();
-
-    const { data, error } = await supabase
-      .from('task')
-      .insert([
-        {
-          user_id: userId,
-          task_name: taskName,
-          start_time: now,
-          activity_type: activityType,
-          distance: distance,
-        }
-      ])
-      .select();
-
-    if (!error) {
-      calculateCurrentStreak(userId);
-      fetchTasksForDate(userId, selectedDate);
-    } else {
-      console.error("Error saving task:", error.message);
-    }
-  };
-
   const fetchLiveCoins = async (uid) => {
     try {
       const { data, error } = await supabase
@@ -293,7 +262,6 @@ const Profile = () => {
       console.error("Error pulling live balance details:", err.message);
     }
   };
-
 
   useEffect(() => {
     if (isFocused && userId) {
@@ -319,12 +287,20 @@ const Profile = () => {
         {/* Profile Section */}
         <View style={styles.profileSection}>
           <View style={styles.avatarContainer}>
-            <View style={styles.avatarCircle} />
+            {/* Clickable Avatar Container from Version 2 */}
+            <TouchableOpacity
+              style={styles.avatarCircle}
+              onPress={() => setAvatarModalVisible(true)}
+              activeOpacity={0.85}
+            >
+              {/* TODO: drop your interactive character component here */}
+            </TouchableOpacity>
+            
             <View style={styles.levelBadge}>
               <Text style={styles.levelText}>Lvl 12</Text>
             </View>
           </View>
-          <Text style={styles.userName}>User's name</Text> 
+          <Text style={styles.userName}>{userProfile.name}</Text> 
         </View>
 
         {/* Stats Row */}
@@ -357,95 +333,129 @@ const Profile = () => {
             </View>
           </View>
 
-        {/* Date Picker Ribbon */}
-        <View>
-          <ScrollView 
-            ref={ribbonScrollRef}
-            horizontal 
-            showsHorizontalScrollIndicator={false} 
-            contentContainerStyle={styles.dateRibbon}
-          >
-            {availableDates.map((dateObj) => {
-              const isActive = selectedDate === dateObj.full;
-              const isActualToday = dateObj.full === TODAY_STR;
+          {/* Date Picker Ribbon */}
+          <View style={styles.datePickerContainer}>
+            <ScrollView 
+              ref={ribbonScrollRef}
+              horizontal 
+              showsHorizontalScrollIndicator={false} 
+              contentContainerStyle={styles.dateRibbon}
+            >
+              {availableDates.map((dateObj) => {
+                const isActive = selectedDate === dateObj.full;
+                const isActualToday = dateObj.full === TODAY_STR;
 
-              return (
-                <TouchableOpacity 
-                  key={dateObj.full} 
-                  onPress={() => setSelectedDate(dateObj.full)}
-                  style={[
-                    styles.dateItem, 
-                    isActive && styles.activeDateItem,
-                    (!isActive && isActualToday) && styles.todayShadedItem 
-                  ]}
-                >
-                  <Text style={[
-                    styles.dateText, 
-                    isActive && styles.activeDateText,
-                    (!isActive && isActualToday) && styles.todayShadedText
-                  ]}>
-                    {dateObj.day}
-                  </Text>
-                  <Text style={[
-                    styles.dateNumber, 
-                    isActive && styles.activeDateText,
-                    (!isActive && isActualToday) && styles.todayShadedText
-                  ]}>
-                    {dateObj.num}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
+                return (
+                  <TouchableOpacity 
+                    key={dateObj.full} 
+                    onPress={() => setSelectedDate(dateObj.full)}
+                    style={[
+                      styles.dateItem, 
+                      isActive && styles.activeDateItem,
+                      (!isActive && isActualToday) && styles.todayShadedItem 
+                    ]}
+                  >
+                    <Text style={[
+                      styles.dateText, 
+                      isActive && styles.activeDateText,
+                      (!isActive && isActualToday) && styles.todayShadedText
+                    ]}>
+                      {dateObj.day}
+                    </Text>
+                    <Text style={[
+                      styles.dateNumber, 
+                      isActive && styles.activeDateText,
+                      (!isActive && isActualToday) && styles.todayShadedText
+                    ]}>
+                      {dateObj.num}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
           </View>
 
-        {/* Exercise + Goals List */}
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          {currentTasks.length > 0 ? (
-            currentTasks.map((task) => (
-              <View key={`${task.type}-${task.id}`} style={styles.taskItem}>
-                <View style={styles.taskLeft}>
-                  {/* Checkbox Frame */}
-                  <View 
-                    style={[
-                      styles.checkbox, 
+          {/* Exercise + Goals List */}
+          <ScrollView contentContainerStyle={styles.scrollContent}>
+            {currentTasks.length > 0 ? (
+              currentTasks.map((task) => (
+                <View key={`${task.type}-${task.id}`} style={styles.taskItem}>
+                  <View style={styles.taskLeft}>
+                    {/* Checkbox Frame */}
+                    <View 
+                      style={[
+                        styles.checkbox, 
+                        task.completed 
+                          ? { backgroundColor: '#D9A066', borderColor: '#D9A066' } 
+                          : { backgroundColor: 'transparent', borderColor: '#A1A1A1', borderStyle: 'dashed' }
+                      ]} 
+                    />
+                    {/* Dynamic Title Text (Struck out if completed) */}
+                    <Text style={[
+                      styles.taskTitle, 
                       task.completed 
-                        ? { backgroundColor: '#D9A066', borderColor: '#D9A066' } 
-                        : { backgroundColor: 'transparent', borderColor: '#A1A1A1', borderStyle: 'dashed' }
-                    ]} 
-                  />
-                  {/* Dynamic Title Text (Struck out if completed) */}
-                  <Text style={[
-                    styles.taskTitle, 
-                    task.completed 
-                      ? { color: '#A1A1A1', textDecorationLine: 'line-through' } 
-                      : { color: '#444444', textDecorationLine: 'none' }
-                  ]}>
-                    {task.title}
-                  </Text>
-                </View>
-
-                {/* SHOW BADGE EXCLUSIVELY ON THE RIGHT SIDE OF GOAL ITEMS */}
-                {task.type === 'goal' && (
-                  <View style={styles.goalBadge}>
-                    <Award size={14} color="#D9A066" style={{ marginRight: 4 }} />
-                    <Text style={styles.goalBadgeText}>Goal</Text>
+                        ? { color: '#A1A1A1', textDecorationLine: 'line-through' } 
+                        : { color: '#444444', textDecorationLine: 'none' }
+                    ]}>
+                      {task.title}
+                    </Text>
                   </View>
-                )}
+
+                  {/* Goal items condition indicator */}
+                  {task.type === 'goal' && (
+                    <View style={styles.goalBadge}>
+                      <Award size={14} color="#D9A066" style={{ marginRight: 4 }} />
+                      <Text style={styles.goalBadgeText}>Goal</Text>
+                    </View>
+                  )}
+                </View>
+              ))
+            ) : (
+              <View style={{ alignItems: 'center', marginTop: 40 }}>
+                <Text style={{ color: '#A1A1A1' }}>No activities scheduled for this day.</Text>
               </View>
-            ))
-          ) : (
-            <View style={{ alignItems: 'center', marginTop: 40 }}>
-              <Text style={{ color: '#A1A1A1' }}>No activities scheduled for this day.</Text>
+            )}
+          </ScrollView>
+        </View>        
+        
+        {/* Avatar Character Interactive Modal Overlay */}
+        <Modal
+          visible={avatarModalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setAvatarModalVisible(false)}
+        >
+          <TouchableWithoutFeedback onPress={() => setAvatarModalVisible(false)}>
+            <View style={styles.modalOverlay}>
+              <TouchableWithoutFeedback>
+                <View style={styles.modalCard}>
+
+                  {/* Close button */}
+                  <TouchableOpacity
+                    style={styles.modalClose}
+                    onPress={() => setAvatarModalVisible(false)}
+                  >
+                    <X color="#D9A066" size={20} />
+                  </TouchableOpacity>
+
+                  {/* Large avatar circle — character context wrapper */}
+                  <View style={styles.modalAvatarCircle}>
+                    {/* TODO: replace with your interactive character component */}
+                    <Text style={styles.modalAvatarPlaceholder}>🏋️</Text>
+                  </View>
+
+                  <Text style={styles.modalName}>{userProfile.name}</Text>
+
+                </View>
+              </TouchableWithoutFeedback>
             </View>
-          )}
-        </ScrollView>
-      </View>        
-      <Navbar />
-  </SafeAreaView>
+          </TouchableWithoutFeedback>
+        </Modal>
+
+        <Navbar />
+    </SafeAreaView>
   );
 };
-
 
 // Reusable Components
 const StatBox = ({ icon, label, value }) => (
@@ -458,7 +468,6 @@ const StatBox = ({ icon, label, value }) => (
   </View>
 );
 
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#3D523B' },
   scrollContent: { paddingBottom: 100 },
@@ -469,7 +478,14 @@ const styles = StyleSheet.create({
   currencyText: { color: 'white', marginLeft: 5, fontWeight: 'bold' },
   profileSection: { alignItems: 'center', marginTop: 10 },
   avatarContainer: { width: 120, height: 120, position: 'relative' },
-  avatarCircle: { width: '100%', height: '100%', borderRadius: 60, backgroundColor: '#D9A066' },
+  avatarCircle: { 
+    width: '100%', 
+    height: '100%', 
+    borderRadius: 60, 
+    backgroundColor: '#D9A066',
+    alignItems: 'center',
+    justifyContent: 'center' 
+  },
   levelBadge: { position: 'absolute', bottom: 0, right: 0, backgroundColor: '#D9A066', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 2, borderColor: '#3D523B' },
   levelText: { color: 'white', fontSize: 12, fontWeight: 'bold' },
   userName: { color: 'white', fontSize: 24, fontWeight: 'bold', marginTop: 15 },
@@ -576,6 +592,51 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+  
+  // Modal Style System Imports
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(30, 45, 28, 0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalCard: {
+    backgroundColor: '#2E4A2C',
+    borderRadius: 28,
+    padding: 32,
+    alignItems: 'center',
+    width: 280,
+    borderWidth: 1,
+    borderColor: '#4A6A3A',
+  },
+  modalClose: {
+    position: 'absolute',
+    top: 14,
+    right: 14,
+    padding: 4,
+  },
+  modalAvatarCircle: {
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: '#D9A066',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  modalAvatarPlaceholder: {
+    fontSize: 72,
+  },
+  modalName: {
+    color: 'white',
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  modalTitle: {
+    color: '#A1A1A1',
+    fontSize: 14,
   },
 });
 
