@@ -12,8 +12,9 @@ export const WelcomeStyles = StyleSheet.create({
     paddingVertical: 40,
   },
   headerSection: {
+    marginTop: 20,
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 20,
   },
   logoPlaceholder: {
     width: 100,
