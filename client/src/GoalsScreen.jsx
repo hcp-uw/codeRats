@@ -330,7 +330,16 @@ export default function GoalsScreen({ navigation }) {
         </View>
     </View>
 
-   
+    {/* Muscle Groups Placeholder */}
+    <View style={styles.tanCard}>
+        <Text style={styles.cardTitle}>Muscle Groups Targeted</Text>
+
+        {/* TODO: replace with a work analytics chart */}
+        <Text style={styles.placeholderText}>
+        Chart coming soon
+            </Text>
+        </View>
+
     {/* Goals List */}
     {/* Active Goals List */}
     <View style={styles.greenCard}>
@@ -550,6 +559,14 @@ export default function GoalsScreen({ navigation }) {
           </View>
       </View>
   </Modal>
+
+    <ConfettiCannon
+        count={80}
+        origin={{ x: 200, y: 0 }}
+        autoStart={false}
+        ref={confettiRef}
+        fadeOut={true}
+    />
 
     <ConfettiCannon
         count={80}

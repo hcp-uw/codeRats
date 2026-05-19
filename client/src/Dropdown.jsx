@@ -283,7 +283,7 @@ export function DurationPicker({ value, onChange }) {
   );
 }
 
-export function DistancePicker({ value, onChange }) {
+export function DistancePicker({ value, onChange, placeholder = "Enter distance" }) {
 
   return (
     <View style={styles.wrapper}>
@@ -296,7 +296,7 @@ export function DistancePicker({ value, onChange }) {
         <TextInput
           style={styles.text}
           keyboardType="numeric"
-          placeholder="Distance"
+          placeholder= {placeholder}
           value={value}
           onChangeText={onChange}
         />

@@ -16,25 +16,19 @@ function assertFiniteNumber(value, fieldName) {
   return n;
 }
 
-function combineDateTimeToISO(date, time) {
-  if (!date && !time) return null;
+function combineDateTimeToISO(dateStr, timeStr) {
+  if (!dateStr || !timeStr) return null;
 
-  if (typeof date === "string" && date.includes("T")) {
-    const parsed = Date.parse(date);
-    if (!Number.isNaN(parsed)) return new Date(parsed).toISOString();
-  }
+  // dateStr is "YYYY-MM-DD", timeStr is "HH:MM"
+  // This safely parses them as a local time instead of UTC
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const [hours, minutes] = timeStr.split(':').map(Number);
 
-  if (!date) throw new Error("date is required if time is provided");
-  if (!time) throw new Error("time is required if date is provided");
+  // Months are 0-indexed in JS Date constructors
+  const localDate = new Date(year, month - 1, day, hours, minutes);
 
-  const [yyyy, mm, dd] = date.split("-").map(Number);
-  const [hh, min] = time.split(":").map(Number);
-
-  const local = new Date(yyyy, mm - 1, dd, hh, min, 0);
-  if (Number.isNaN(local.getTime())) {
-    throw new Error("Invalid date/time format. Use YYYY-MM-DD and HH:MM");
-  }
-  return local.toISOString();
+  // Returns a fully-qualified UTC ISO string (e.g., "2026-05-17T06:13:00.000Z")
+  return localDate.toISOString();
 }
 
 export async function createTask({
@@ -167,18 +161,59 @@ export async function createTaskFromWorkoutForm({
   set_reps,
   user_id,
 }) {
-  const start_time = combineDateTimeToISO(date, time);
-  return createTask({
+  assertNonEmptyString(title, "title");
+  assertNonEmptyString(activity_type, "activity_type");
+  assertNonEmptyString(user_id, "user_id");
+
+  // This creates your clean "YYYY-MM-DDTHH:MM:00.000" local string snippet
+  const isoStr = combineDateTimeToISO(date, time); 
+
+  const insertObj = {
     task_name: title,
-    description,
+    description: description || null,
     activity_type,
-    duration,
-    start_time,
-    distance,
-    muscle_groups,
-    exercise,
-    weight,
-    set_reps,
+    duration: duration !== undefined && duration !== null ? assertFiniteNumber(duration, "duration") : null,
+    distance: distance !== undefined && distance !== null ? assertFiniteNumber(distance, "distance") : null,
+    muscle_groups: muscle_groups || null,
+    exercise: exercise || null,
+    weight: weight !== undefined && weight !== null ? assertFiniteNumber(weight, "weight") : null,
+    set_reps: set_reps || null,
     user_id,
-  });
+    // CRITICAL: Send the clean isoStr text directly! Do not wrap it in new Date()
+    start_time: isoStr, 
+  };
+  
+  const { data, error } = await supabase
+    .from(TABLE)
+    .insert([insertObj])
+    .select("*")
+    .single();
+
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function rewardUserCoins(user_id, amount = 10) {
+  if (!user_id) throw new Error("user_id is required to reward coins");
+
+  const { error } = await supabase
+    .rpc('increment_coins', { target_user_id: user_id, amount: amount });
+
+  if (error) throw new Error(`Failed to update coins: ${error.message}`);
+}
+
+
+/**
+ * Deducts coins from a user's avatar row when a workout is removed
+ * @param {string} user_id - The authenticated UUID of the user
+ * @param {number} amount - Amount of coins to remove (default 10)
+ */
+export async function deductUserCoins(user_id, amount = 10) {
+  if (!user_id) throw new Error("user_id is required to deduct coins");
+
+  // Reuses our secure RPC tracking, passing a negative amount to subtract balances cleanly
+  const { error } = await supabase
+    .rpc('increment_coins', { target_user_id: user_id, amount: -amount });
+
+  if (error) throw new Error(`Failed to decrement coins: ${error.message}`);
 }
