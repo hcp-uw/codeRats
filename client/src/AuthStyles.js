@@ -12,23 +12,28 @@ export const WelcomeStyles = StyleSheet.create({
     paddingVertical: 40,
   },
   headerSection: {
+    marginTop: 20,
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 20,
   },
   logoPlaceholder: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: '#D4A574',
+
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
   },
+  coderat: {
+    width: 150,
+    height : 150,
+  }, 
   logoText: {
     fontSize: 50,
   },
   appTitle: {
-    fontSize: 28,
+    fontSize: 35,
     fontWeight: 'bold',
     color: '#D4A574',
     marginBottom: 10,

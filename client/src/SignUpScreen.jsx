@@ -190,7 +190,7 @@ export default function SignUpScreen({ navigation }) {
           <View style={styles.dividerLine} />
         </View>
 
-        {/* Google Sign Up */} // TODO: Implement Google Sign Up
+        {/* Google Sign Up */}
         <TouchableOpacity style={styles.googleButton}>
           <Text style={styles.googleButtonText}>🔍 Sign up with Google</Text>
         </TouchableOpacity>
@@ -206,5 +206,3 @@ export default function SignUpScreen({ navigation }) {
     </SafeAreaView>
   );
 }
-
-// styles are imported from AuthStyles.js

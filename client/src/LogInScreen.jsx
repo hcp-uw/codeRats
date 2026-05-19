@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Text, View, TouchableOpacity, TextInput, ScrollView, SafeAreaView, Alert } from 'react-native';
 import { LogInStyles as styles } from './AuthStyles';
 import { supabase } from '../lib/supabase';
+import Head from '../icons/head.svg';
 
 export default function LogInScreen({ navigation }) {
   const [email, setEmail] = useState('');
@@ -19,7 +20,6 @@ export default function LogInScreen({ navigation }) {
     if (error) {
       Alert.alert('Login Failed', error.message);
     }
-    // On success, AuthContext detects the new session and RootNavigator redirects automatically
   };
 
   return (
@@ -31,7 +31,7 @@ export default function LogInScreen({ navigation }) {
         </TouchableOpacity>
         <View style={styles.headerContent}>
           <View style={styles.headerIcon}>
-            <Text style={styles.headerIconText}>🏋️</Text>
+            <Head width={30} height={30}/>
           </View>
           <View>
             <Text style={styles.headerTitle}>Welcome Back</Text>
@@ -119,5 +119,3 @@ export default function LogInScreen({ navigation }) {
     </SafeAreaView>
   );
 }
-
-// styles are imported from AuthStyles.js
