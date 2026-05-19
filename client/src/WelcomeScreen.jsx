@@ -2,7 +2,6 @@ import React, { useEffect } from 'react';
 import { Text, View, TouchableOpacity, ScrollView, Image, SafeAreaView } from 'react-native';
 import { WelcomeStyles as styles } from './AuthStyles';
 import { supabase } from '../lib/supabase';
-import Dumbbell from '../icons/Dumbbell.svg';
 import Plant from '../icons/plant.svg';
 import Users from '../icons/users.svg';
 import Track from '../icons/track.svg';
@@ -79,5 +78,3 @@ function FeatureCard({ icon, title, description }) {
     </View>
   );
 }
-
-// styles are imported from AuthStyles.js

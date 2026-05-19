@@ -12,8 +12,9 @@ export const WelcomeStyles = StyleSheet.create({
     paddingVertical: 40,
   },
   headerSection: {
+    marginTop: 20,
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 20,
   },
   logoPlaceholder: {
     width: 100,
@@ -489,5 +490,6 @@ export const ProfileStyles = StyleSheet.create({
   bottomNav: { position: 'absolute', bottom: 0, width: '100%', height: 90, backgroundColor: 'white', flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 10 },
   navItem: { alignItems: 'center' },
   navLabel: { fontSize: 10, color: '#A1A1A1', marginTop: 4 },
-  activeNavCircle: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#FDF5E6', justifyContent: 'center', alignItems: 'center', marginBottom: 40, borderWidth: 2, borderColor: '#D9A066' }
+  activeNavCircle: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#FDF5E6', justifyContent: 'center', alignItems: 'center', marginBottom: 40, borderWidth: 2, borderColor: '#D9A066' },
+
 });

@@ -20,7 +20,6 @@ export default function LogInScreen({ navigation }) {
     if (error) {
       Alert.alert('Login Failed', error.message);
     }
-    // On success, AuthContext detects the new session and RootNavigator redirects automatically
   };
 
   return (
@@ -120,5 +119,3 @@ export default function LogInScreen({ navigation }) {
     </SafeAreaView>
   );
 }
-
-// styles are imported from AuthStyles.js

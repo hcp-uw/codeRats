@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Text, View, TouchableOpacity, TextInput, ScrollView, SafeAreaView, Alert } from 'react-native';
 import { SignUpStyles as styles } from './AuthStyles';
 import { supabase } from '../lib/supabase';
-import Head from '../icons/head.svg';
 
 export default function SignUpScreen({ navigation }) {
   const [username, setUsername] = useState('');
@@ -28,8 +27,9 @@ export default function SignUpScreen({ navigation }) {
       Alert.alert('Error', 'Please accept the Terms of Service');
       return;
     }
-    
-    const { error } = await supabase.auth.signUp({
+
+    // 1. Create the user credentials inside Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -37,10 +37,52 @@ export default function SignUpScreen({ navigation }) {
       }
     });
 
-    if (error) {
-      Alert.alert('Sign Up Failed', error.message);
+    if (authError) {
+      Alert.alert('Sign Up Failed', authError.message);
+      return;
     } else {
       Alert.alert('Success', 'Check your email to confirm your account!');
+    }
+
+    const newUser = authData?.user;
+
+    // 2. If Auth succeeded, manually build out our public table rows
+    if (newUser) {
+      try {
+        // A. Create the public profiles row (uses 'id')
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert([
+            { 
+              id: newUser.id, 
+              username: username.trim() 
+            }
+          ]);
+
+        if (profileError) throw new Error(`Profile setup failed: ${profileError.message}`);
+
+        // B. Create the starting stats row inside the avatar table (uses 'user_id')
+        const { error: avatarError } = await supabase
+          .from('avatar')
+          .insert([
+            {
+              user_id: newUser.id,
+              level: 1,
+              health: 100,
+              strength: 10,
+              coins: 0
+            }
+          ]);
+
+        if (avatarError) throw new Error(`Avatar stats setup failed: ${avatarError.message}`);
+
+        // If both rows complete beautifully:
+        Alert.alert('Success', 'Account initialized successfully! Please check your email to verify.');
+        
+      } catch (dbError) {
+        console.error("Frontend registration sequence error:", dbError.message);
+        Alert.alert('Registration Warning', dbError.message);
+      }
     }
   };
 
@@ -53,7 +95,7 @@ export default function SignUpScreen({ navigation }) {
         </TouchableOpacity>
         <View style={styles.headerContent}>
           <View style={styles.headerIcon}>
-            <Head width={30} height={30}/>
+            <Text style={styles.headerIconText}>👤</Text>
           </View>
           <View>
             <Text style={styles.headerTitle}>Join Momentum</Text>
@@ -130,7 +172,7 @@ export default function SignUpScreen({ navigation }) {
           </TouchableOpacity>
           <Text style={styles.checkboxLabel}>
             I agree to the Terms of Service and Privacy Policy
-          </Text> // TODO: Link to actual documents
+          </Text>
         </View>
 
         {/* Sign Up Button */}
@@ -148,7 +190,7 @@ export default function SignUpScreen({ navigation }) {
           <View style={styles.dividerLine} />
         </View>
 
-        {/* Google Sign Up */} // TODO: Implement Google Sign Up
+        {/* Google Sign Up */}
         <TouchableOpacity style={styles.googleButton}>
           <Text style={styles.googleButtonText}>🔍 Sign up with Google</Text>
         </TouchableOpacity>
@@ -164,5 +206,3 @@ export default function SignUpScreen({ navigation }) {
     </SafeAreaView>
   );
 }
-
-// styles are imported from AuthStyles.js

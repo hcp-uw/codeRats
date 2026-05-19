@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -11,79 +11,284 @@ import {
   Keyboard,
   SafeAreaView,
 } from 'react-native';
+import ConfettiCannon from 'react-native-confetti-cannon';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import Navbar from './Navbar'; 
+import { useAuth } from './AuthContext';
+import { getGoalsByUser, createGoal, updateGoal, deleteGoal } from './goalBackend';
 
 export default function GoalsScreen({ navigation }) {
-
-//TODO: replace with Supbase fetch for user goals
-  const [goals, setGoals] = useState([
-    {
-      id: '1',
-      icon: '🏋️',
-      title: "Bench 225 lbs",
-      desc: "Target by June 2025",
-    },
-    {
-      id: '2',
-      icon: '🏃',
-      title: "Sub 3 Hour Marathon",
-      desc: "Train consistently for 6 months",    
-    },
-    {
-      id: '3',
-      icon: '🔥',
-      title: "Workout Everyday",
-      desc: "At least 30 minutes daily",    
-    },
-  ]); 
+  // Try to grab user id
+  const { user, loading } = useAuth();
+  const userId = user?.id;
+  const [goals, setGoals] = useState([]);
+  
 
   const [goalTitle, setGoalTitle] = useState('');
   const [goalDesc, setGoalDesc] = useState('');
   const [goalIcon, setGoalIcon] = useState('🔥');
+  const [goalEnd, setGoalEnd] = useState(null);
+  const [goalStatus, setGoalStatus] = useState('');
 
+  const confettiRef = useRef(null);
 
+  const [tempDate, setTempDate] = useState(null);
+  const [datePickerVisible, setDatePickerVisible] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
 
   const [menuVisible, setMenuVisible] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState(null);
   const [isediting, setIsEditing] = useState(false);
 
-  const handleSaveGoal = () => {
+  const [overdueModalVisible, setOverdueModalVisible] = useState(false);
+  const [currentOverdue, setCurrentOverdue] = useState(null);
+  const [overdueQueue, setOverdueQueue] = useState([]);
+  const [overdueChecked, setOverdueChecked] = useState(false);
 
-    if (!goalTitle.trim()) return;
 
-    if (isediting) {
-      setGoals(prev =>
-        prev.map(g => g.id === selectedGoal.id ? { ...g, title: goalTitle, desc: goalDesc, icon: goalIcon } : g)
-      );
-    } else {
-      const newGoal = {
-        id: Date.now().toString(),
-        title: goalTitle,
-        desc: goalDesc,
-        icon: goalIcon,
-      };
-      setGoals(prev => [...prev, newGoal]);
+  const [isRescheduling, setIsRescheduling] = useState(false);
+
+  // Fetchs current goals from supabase automatically
+  useEffect(() => {
+    if (!userId) return;
+    const fetchGoals = async () => {
+      // get goal data for user
+      const data = await getGoalsByUser(userId);
+
+      // map data to expected fields
+      const mapped = data.map(g => ({
+        id: g.goal_id,
+        title: g.goal_name,
+        desc: g.goal_desc,
+        icon: g.icon ?? '🎯',
+        end: g.end_date ?? '',
+        completed: g.status === 'completed',
+      }));
+      setGoals(mapped);
+    };
+
+    fetchGoals();
+  }, [userId]); // reruns whenever userId changes
+
+  useEffect(() => {
+    if (!userId || goals.length === 0) return;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const overdue = goals.filter(g => {
+      if (!g.end || g.completed) return false;
+
+      const d = new Date(g.end);
+      if (isNaN(d)) return false;
+
+      d.setHours(0, 0, 0, 0);
+      return d < today;
+    });
+
+    if (overdue.length > 0) {
+      setOverdueQueue(overdue);
+      setCurrentOverdue(overdue[0]);
+      setOverdueModalVisible(true);
     }
+  }, [goals, userId]);
 
-    setGoalTitle('');
-    setGoalDesc('');
-    setGoalIcon('🔥');
-    setModalVisible(false);
-    setIsEditing(false);
+  const handleOverdueComplete = async () => {
+    console.log("COMPLETE CLICKED", currentOverdue);
+
+    try {
+      const result = await updateGoal(
+        currentOverdue.id,
+        { status: 'completed' }
+      );
+
+      console.log("update result", result);
+
+      setGoals(prev =>
+        prev.map(g =>
+          g.id === currentOverdue.id
+            ? {
+                ...g,
+                completed: true,
+              }
+            : g
+        )
+      );
+
+      handleNextOverdue();
+
+    } catch (e) {
+      console.log("COMPLETE ERROR:", e.message);
+    }
   };
 
-  const handleDelete = () => {
-    setGoals(prev => prev.filter(g => g.id !== selectedGoal.id));
+  const handleOverdueAbandon = async () => {
+    const goal = currentOverdue;
+
+    console.log("ABANDON CLICKED:", goal);
+
+    if (!goal?.id) {
+      console.log("No valid goal to abandon");
+      return;
+    }
+
+    try {
+      const result = await updateGoal(goal.id, {
+        status: 'abandoned'
+      });
+
+      console.log("ABANDON RESULT:", result);
+
+      setGoals(prev =>
+        prev.filter(g => g.id !== goal.id)
+      );
+
+      handleNextOverdue();
+
+    } catch (e) {
+      console.log("ABANDON ERROR:", e.message);
+    }
+  };
+
+  const handleOverdueKeepGoing = () => {
+    setOverdueModalVisible(false);
+    setGoalEnd(new Date(currentOverdue.end));
+    setTempDate(new Date(currentOverdue.end));
+    setIsRescheduling(true);
+    setDatePickerVisible(true);
+  };
+
+  const handleNextOverdue = () => {
+    setOverdueQueue(prev => {
+      const remaining = prev.slice(1);
+
+      if (remaining.length > 0) {
+        setCurrentOverdue(remaining[0]);
+        setOverdueModalVisible(true);
+      } else {
+        setCurrentOverdue(null);
+        setOverdueModalVisible(false);
+      }
+
+      return remaining;
+    });
+  };
+
+  const handleComplete = async (goal) => {
+    const newStatus = goal.completed ? 'active' : 'completed';
+    await updateGoal(goal.id, { status: newStatus });
+    setGoals(prev =>
+      prev.map(g => g.id === goal.id ? { ...g, completed: !g.completed } : g)
+    );
+    if (newStatus === 'completed') {
+      confettiRef.current.start();
+    }
+  };
+
+  const handleSaveGoal = async () => {
+    console.log('1. fired', goalTitle, goalEnd);
+
+    if (!goalTitle.trim()) return;
+    console.log('2. past title check');
+
+    try {
+      let result;
+
+      if (isediting) {
+        console.log('3. editing branch');
+
+        result = await updateGoal(selectedGoal.id, {
+          goal_name: goalTitle,
+          goal_desc: goalDesc,
+          icon: goalIcon,
+          end_date: goalEnd,
+        });
+
+        setGoals(prev =>
+          prev.map(g =>
+            g.id === selectedGoal.id
+              ? {
+                  ...g,
+                  title: result.goal_name,
+                  desc: result.goal_desc,
+                  icon: result.icon,
+                  end: result.end_date,
+                }
+              : g
+          )
+        );
+      } else {
+        console.log('3. create branch');
+
+        result = await createGoal({
+          goal_name: goalTitle,
+          goal_desc: goalDesc,
+          icon: goalIcon,
+          end_date: goalEnd,
+          user_id: userId,
+        });
+
+        setGoals(prev => [
+          ...prev,
+          {
+            id: result.goal_id,
+            title: result.goal_name,
+            desc: result.goal_desc,
+            icon: result.icon ?? '🔥',
+            end: result.end_date ?? '',
+            completed: result.status === 'completed',
+          },
+        ]);
+      }
+
+      console.log('4. success:', result);
+
+      // only reset form after successful save
+      setGoalTitle('');
+      setGoalDesc('');
+      setGoalIcon('🔥');
+      setModalVisible(false);
+      setIsEditing(false);
+      setGoalEnd(null);
+      setTempDate(null);
+
+    } catch (e) {
+      console.log('ERROR:', e.message);
+    }
+  };
+
+  const handleDelete = async () => {
+    const success = await deleteGoal(selectedGoal.id);
+    if (success) {
+      // Set state to array copy minus deleted goal
+      setGoals(prev => prev.filter(g => g.id !== selectedGoal.id));
+    }
     setMenuVisible(false);
   };
 
+  const onDateChange = (event, selectedDate) => {
+    if (selectedDate) {
+      setTempDate(selectedDate);
+    }
+  };
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    return new Date(dateStr).toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    })
+  };
+
+  const activeGoals = goals.filter(g => !g.completed);
+  const completedGoals = goals.filter(g => g.completed);
     
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView 
       showsVerticalScrollIndicator={false}
-      contentContainerStyle={{ paddingBottom: 40 }}>
+      contentContainerStyle={{ paddingBottom: 40, paddingHorizontal: 18 }}>
 
         {/* Page Title */}
         <View style={styles.header}>
@@ -136,64 +341,70 @@ export default function GoalsScreen({ navigation }) {
         </View>
 
     {/* Goals List */}
+    {/* Active Goals List */}
     <View style={styles.greenCard}>
         <Text style={styles.cardTitle}>Your Goals</Text>
 
-        {goals.map((goal, index) => (
+        {activeGoals.map((goal, index) => (
           <View key={index}>
-
-            {/* box row*/}
             <View style={styles.goalRow}>
               <Text style={styles.goalIcon}>{goal.icon}</Text>
-
-        
-                <View style={{flex:1}}>
-                    <Text style={styles.goalTitle}>{goal.title}</Text>
-                    <Text style={styles.goalSubtext}>{goal.desc}</Text>
-                </View>
-
-                <TouchableOpacity
-                  onPress={() => {
-                    setSelectedGoal(goal);
-                    setMenuVisible(true);
-                }}
-                > 
-                {/* Edit/delete buttons */}
-                <Text style={styles.menuDots}>•••</Text>
-                </TouchableOpacity>
-                </View>
-
-                {/* Divider Line*/}
-                {index !== goals.length -1 && (
-                  <View style={styles.divider}/>
-                )}
-
+              <View style={{flex:1}}>
+                  <Text style={styles.goalTitle}>{goal.title}</Text>
+                  <Text style={styles.goalEnd}>{formatDate(goal.end)}</Text>
+                  <Text style={styles.goalSubtext}>{goal.desc}</Text>
               </View>
-            ))}
+              <TouchableOpacity
+                  style={[styles.checkbox, goal.completed && { backgroundColor: '#D4A574', borderColor: '#D4A574' }]}
+                  onPress={() => handleComplete(goal)}
+              />
+              <TouchableOpacity onPress={() => {
+                  setSelectedGoal(goal);
+                  setMenuVisible(true);
+              }}>
+                  <Text style={styles.menuDots}>•••</Text>
+              </TouchableOpacity>
             </View>
+            {index !== activeGoals.length - 1 && <View style={styles.divider}/>}
+          </View>
+        ))}
+    </View>
 
-      {/* Buttons */}
-
-      {/* Navigation Button */}
-      <View style={styles.buttonContainer}>
-
+    {/* Set New Goal Button */}
+    <View style={styles.buttonContainer}>
         <TouchableOpacity
-          style={styles.primaryButton}
-          onPress={() => setModalVisible(true)}>
-
-        {/* TODO: backend */}
-        <Text style={styles.primaryButtonText}>Set New Goal</Text>
+            style={styles.primaryButton}
+            onPress={() => setModalVisible(true)}>
+            <Text style={styles.primaryButtonText}>Set New Goal</Text>
         </TouchableOpacity>
+    </View>
 
-       {/* TODO: navigate to create goal */}
-        <TouchableOpacity style={styles.secondaryButton}>
-          <Text style={styles.secondaryButtonText}>View History</Text>
-      </TouchableOpacity>
+    {/* Completed Goals History */}
+    {completedGoals.length > 0 && (
+        <View style={[styles.greenCard, {marginTop: 20}]}>
+          <Text style={styles.cardTitle}>🏆 Completed Goals</Text>
+          {completedGoals.map((goal, index) => (
+            <View key={index}>
+              <View style={styles.goalRow}>
+                <Text style={styles.goalIcon}>{goal.icon}</Text>
+                <View style={{flex:1}}>
+                  <Text style={[styles.goalTitle, {opacity: 0.6, textDecorationLine: 'line-through'}]}>{goal.title}</Text>
+                  <Text style={styles.goalEnd}>{formatDate(goal.end)}</Text>
+                  <Text style={styles.goalSubtext}>{goal.desc}</Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.checkbox, { backgroundColor: '#D4A574', borderColor: '#D4A574' }]}
+                  onPress={() => handleComplete(goal)}
+                />
+              </View>
+              {index !== completedGoals.length - 1 && <View style={styles.divider}/>}
+            </View>
+          ))}
+        </View>
+    )}
 
-      </View>
-
-      </ScrollView>
-      <Navbar/>
+    </ScrollView>
+    <Navbar/>
 
     {/* Modal */}
 
@@ -208,27 +419,71 @@ export default function GoalsScreen({ navigation }) {
           <View style={styles.modalCard}>
           {/* Close */}
             <TouchableOpacity
-            style={styles.closeButton}
-            onPress={() => setModalVisible(false)}>
+              style={styles.closeButton}
+              onPress={() => {
+                setModalVisible(false);
+                setGoalTitle('');
+                setGoalDesc('');
+                setGoalIcon('🔥');
+                setGoalEnd(null);
+                setIsEditing(false);
+              }}>
               <Text style={{fontSize:18}}>x</Text>
             </TouchableOpacity>
 
             <Text style={styles.modalTitle}>Create Goal</Text>
 
-           {/* TODO: controlled input */}
            <TextInput
            placeholder="Title of Goal"
            placeholderTextColor="#fff"
-           style={styles.input}/>
+           style={styles.input}
+           value={goalTitle}
+           onChangeText={setGoalTitle}/>
 
-           {/* TODO  */}
+          <TouchableOpacity 
+            style={styles.input}
+            onPress={() => setDatePickerVisible(true)}>
+            <Text style={{color: '#fff'}}>
+              {goalEnd ? goalEnd.toDateString() : 'Pick End Date (optional)'}
+            </Text>
+          </TouchableOpacity>
+
+          {datePickerVisible && (
+            <>
+                  <DateTimePicker
+                      value={tempDate ?? goalEnd ?? new Date()}
+                      mode="date"
+                      display="spinner"
+                      onChange={onDateChange}
+                  />
+                  <TouchableOpacity 
+                      style={styles.confirmButton}
+                      onPress={async () => {
+                          const newDate = tempDate ?? goalEnd;
+                          setGoalEnd(newDate);
+                          setDatePickerVisible(false);
+                          if (isRescheduling && currentOverdue) {
+                              await updateGoal(currentOverdue.id, { end_date: newDate });
+                              setGoals(prev => prev.map(g => g.id === currentOverdue.id ? { ...g, end: newDate.toISOString() } : g));
+                              setIsRescheduling(false);
+                              handleNextOverdue(overdueQueue);
+                          }
+                      }}>
+                      <Text style={{color: '#fff', fontWeight: '700'}}>Confirm</Text>
+                  </TouchableOpacity>
+              </>
+          )}
+
+
            <TextInput
            placeholder="Description (how to get there, when, etc.)"
            placeholderTextColor="#fff"
            multiline
-           style={[styles.input, {height:90}]}/>
+           style={[styles.input, {height:90}]}
+           value={goalDesc}
+           onChangeText={setGoalDesc}/>
 
-           {/* TODO: icon picker */}
+           {/* Icon picker */}
             <Text style={{ color:'#fff', marginBottom:6}}>Choose Icon</Text>
 
             <TextInput
@@ -242,8 +497,7 @@ export default function GoalsScreen({ navigation }) {
               autoCapitalize='none'
               />
 
-
-             {/* TODO: insert Goal  */}
+             {/* Insert Goal  */}
             <TouchableOpacity
             style={styles.saveButton}
             onPress={handleSaveGoal}>
@@ -282,6 +536,45 @@ export default function GoalsScreen({ navigation }) {
         </View>
       </View>
     </Modal>
+    <Modal visible={overdueModalVisible} transparent animationType="fade">
+      <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>⏰ Goal Past Due</Text>
+              <Text style={{color: '#fff', marginBottom: 8, fontWeight: '600', fontSize: 16}}>
+                  {currentOverdue?.icon} {currentOverdue?.title}
+              </Text>
+              <Text style={{color: '#fff', opacity: 0.8, marginBottom: 24}}>
+                  This goal was due {formatDate(currentOverdue?.end)}. What would you like to do?
+              </Text>
+
+              <TouchableOpacity style={styles.saveButton} onPress={handleOverdueComplete}>
+                  <Text style={{color: '#fff', fontWeight: '700'}}>✅ Mark Completed</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                  style={[styles.saveButton, {backgroundColor: 'rgba(255,255,255,0.2)', marginTop: 10}]} 
+                  onPress={handleOverdueAbandon}>
+                  <Text style={{color: '#fff', fontWeight: '700'}}>🚩 Abandon Goal</Text>
+              </TouchableOpacity>
+          </View>
+      </View>
+  </Modal>
+
+    <ConfettiCannon
+        count={80}
+        origin={{ x: 200, y: 0 }}
+        autoStart={false}
+        ref={confettiRef}
+        fadeOut={true}
+    />
+
+    <ConfettiCannon
+        count={80}
+        origin={{ x: 200, y: 0 }}
+        autoStart={false}
+        ref={confettiRef}
+        fadeOut={true}
+    />
 
     </SafeAreaView>
 
@@ -399,6 +692,11 @@ const styles = StyleSheet.create({
     color: '#fff',
     opacity: 0.7,
     marginBottom: 2,
+  },
+  goalEnd: {
+    fontSize: 12,
+    color: '#D4A574',
+    marginTop: 2,
   },
 
   menuDots:{
@@ -525,5 +823,25 @@ const styles = StyleSheet.create({
     padding:16,
     borderRadius:14,
     alignItems:'center',
+  },
+
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: '#fff',
+    marginRight: 12,
+  },
+
+  confirmButton:{
+    backgroundColor:'#3D5A3C',
+    padding:10,
+    borderRadius:10,
+    alignItems:'center',
+    marginTop:8,
+    marginBottom:14,
+    width:'40%',
+    alignSelf:'center',
   },
 });
